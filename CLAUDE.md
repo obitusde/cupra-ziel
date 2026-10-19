@@ -42,11 +42,11 @@ Google Maps (Teilen) ──text/url──► PWA (GitHub Pages, index.html, shar
 |---|---|
 | Repo | `obitusde/cupra-ziel` (öffentlich) |
 | Pages | https://obitusde.github.io/cupra-ziel/ (Christof muss Pages einmal einschalten: Settings → Pages → Branch `main` / root) |
-| Apps Script | legt die Action beim ersten Lauf an → `apps-script/.clasp.json` (scriptId), `apps-script/deployment-id.txt` |
-| Web-App | `https://script.google.com/macros/s/<deployment-id>/exec` · `?test=1` Diagnose mit 3 Testlinks · `?link=…` |
+| Apps Script | scriptId `1qnt4e9-EOZ2DA-HWfRkyU1TVeilJdHCYDT7nqplLCG5Sr4o1X1T4XFpQ` (am 19.10.2026 von der Action angelegt, `apps-script/.clasp.json`), Editor https://script.google.com/d/1qnt4e9-EOZ2DA-HWfRkyU1TVeilJdHCYDT7nqplLCG5Sr4o1X1T4XFpQ/edit |
+| Web-App | Deployment-ID `AKfycbwRpVeFUoUoVfjENhinhW9zfR5EjWWRk4Nx0zxRBpldBBA0YKf4f7Xl_YwDO-Vq1wsB` (`apps-script/deployment-id.txt`), URL `https://script.google.com/macros/s/<ID>/exec` · `?test=1` Diagnose mit 3 Testlinks · `?link=…` |
 | Secret `CLASPRC_JSON` | Inhalt von Christofs `~/.clasprc.json`, am 19.10.2026 per `gh secret set` gesetzt. **Nie ausgeben.** |
 
-Erste Freigabe: Nach dem ersten Deploy muss Christof einmal die Web-App-URL (bzw. im Editor `testeLinks`) öffnen und Google die Berechtigungen (externe Anfragen) erlauben.
+Erste Freigabe (Stand 19.10.2026 noch offen): Nach dem ersten Deploy muss Christof einmal die Web-App-URL (bzw. im Editor `testeLinks`) öffnen und Google die Berechtigungen (externe Anfragen) erlauben.
 
 ## 5. Routine
 
@@ -64,3 +64,8 @@ Veröffentlichen = committen und auf `main` pushen. Die Action läuft bei Änder
 2. Welche Variante findet die myCupra-Suche (Adresse ohne Land / mit Land / Name + Ort)?
 3. Welche Öffnen-Methode (A/B/C) startet myCupra sauber?
 4. Erscheint Cupra-Ziel nach der Installation im Teilen-Menü von Google Maps, und was steht im geteilten Text (nur Link oder Name + Adresse + Link)?
+
+## 7. Hinweise für die Cloud-Sitzung
+
+- Die Cloud-Umgebung erreicht **script.google.com und obitusde.github.io nicht** (Proxy). Action-Status über die öffentliche API prüfen: `curl https://api.github.com/repos/obitusde/cupra-ziel/actions/runs?per_page=1`, Fehlertexte über `…/check-runs/<job-id>/annotations`.
+- `gh` ist in der Cloud nicht angemeldet; Action neu starten = Änderung an einer überwachten Datei pushen.
