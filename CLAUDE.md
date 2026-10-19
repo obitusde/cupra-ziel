@@ -66,8 +66,8 @@ Veröffentlichen = committen und auf `main` pushen. Die Action läuft bei Änder
 ## 6. Offene Tests (Christof, Pixel)
 
 1. ~~Web-App `?test=1`~~ 19.10.2026: Links 1+2 ok (Edmund-Weller-str. 2, 58675 Hemer, ~40 m), Link 3 „Keine Adresse" → v0.2.0, erneut prüfen.
-2. Welche Variante findet die myCupra-Suche (Name + Adresse / Adresse ohne Land / mit Land)? 19.10.2026: Adresse funktioniert ("sonst klappt alles"); Name + Adresse offen.
-3. Öffnen: B klappte am 19.10.2026; K (`cupra://map`) ab v0.1.2 offen.
+2. ✅ 19.10.2026 (v0.1.2): myCupra-Suche findet die kopierte Adresse.
+3. ✅ 19.10.2026: K (`cupra://map`) öffnet myCupra sofort auf der Karte.
 4. Erscheint Cupra-Ziel nach der Installation im Teilen-Menü von Google Maps, und was steht im geteilten Text (nur Link oder Name + Adresse + Link)?
 
 ## 7. Hinweise für die Cloud-Sitzung
