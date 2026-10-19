@@ -1,61 +1,107 @@
-# PWA-Test mit Playwright (Python) und nachgebautem Apps-Script-Dienst. Version 0.2.0 (19.10.2026)
+# PWA-Test mit Playwright (Python) und nachgebautem Apps-Script-Dienst. Version 0.3.0 (19.10.2026)
 # 0.2.0: Name mitkopieren, Methode K, Version im Kopf, Service Worker
+# 0.3.0: Favoriten (POST liste/speichern/loeschen/pruefen), Verlauf, Schnellzugriff ?oeffne=, Rückkehr ?zurueck=
 # Aufruf: python3 tests/pwa-test.py . <ordner-fuer-screenshots>
 import json, sys, threading, http.server, functools
+from urllib.parse import quote, urlparse, parse_qs
 from playwright.sync_api import sync_playwright
+
 root = sys.argv[1]; out = sys.argv[2]
-H = functools.partial(http.server.SimpleHTTPRequestHandler, directory=root)
-srv = http.server.ThreadingHTTPServer(('127.0.0.1', 8765), H)
+class Leise(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *a): pass
+srv = http.server.ThreadingHTTPServer(('127.0.0.1', 8765), functools.partial(Leise, directory=root))
 threading.Thread(target=srv.serve_forever, daemon=True).start()
-antwort = {"ok": True, "version": "0.1.0", "name": "Café am Markt", "lat": 51.386212, "lon": 7.778578,
+
+ANTWORT = {"ok": True, "version": "0.3.0", "name": "Café am Markt", "lat": 51.386212, "lon": 7.778578,
   "adresse": "Hauptstraße 210, 58675 Hemer, Deutschland", "abstandM": 140,
   "varianten": [{"art": "Adresse", "text": "Hauptstraße 210, 58675 Hemer"}, {"art": "Name + Ort", "text": "Café am Markt, Hemer"},
                 {"art": "Adresse mit Land", "text": "Hauptstraße 210, 58675 Hemer, Deutschland"}, {"art": "Koordinaten", "text": "51.386212, 7.778578"}]}
+SCHLUESSEL = "geheim123"
+favs = [{"id": "f1", "name": "Büro Le Brassus", "adresse": "Route de France 16, 1348 Le Brassus", "lat": None, "lon": None, "reihenfolge": 1}]
+anfragen = []
+
+def dienst(route):
+    req = route.request
+    if req.method == "POST":
+        d = json.loads(req.post_data or "{}"); anfragen.append(d)
+        if d.get("schluessel") != SCHLUESSEL:
+            body = {"ok": False, "fehler": "Schlüssel falsch"}
+        elif d["aktion"] == "pruefen":
+            body = {"ok": True}
+        elif d["aktion"] == "liste":
+            body = {"ok": True, "favoriten": favs}
+        elif d["aktion"] == "speichern":
+            f = d["fav"]
+            alt = next((x for x in favs if x["id"] == f.get("id")), None)
+            if alt: alt.update({k: f[k] for k in ("name", "adresse", "reihenfolge") if k in f})
+            else: favs.append({"id": "f%d" % (len(favs) + 1), "name": f["name"] or f["adresse"], "adresse": f["adresse"], "lat": f.get("lat"), "lon": f.get("lon"), "reihenfolge": len(favs) + 1})
+            favs.sort(key=lambda x: x["reihenfolge"])
+            body = {"ok": True, "favoriten": favs}
+        elif d["aktion"] == "loeschen":
+            favs[:] = [x for x in favs if x["id"] != d["id"]]
+            body = {"ok": True, "favoriten": favs}
+        route.fulfill(status=200, content_type="application/json", body=json.dumps(body)); return
+    route.fulfill(status=200, content_type="application/json", body=json.dumps(ANTWORT))
+
+D = "?dienst=" + quote("https://dienst.test/exec")
 with sync_playwright() as p:
     b = p.chromium.launch()
     ctx = b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, color_scheme="dark")
     ctx.grant_permissions(["clipboard-read", "clipboard-write"], origin="http://127.0.0.1:8765")
-    pg = ctx.new_page()
-    logs = []
-    pg.on("console", lambda m: logs.append(m.text))
+    ctx.route("https://dienst.test/**", dienst)
+    navigiert = []
+    ctx.route("intent://**", lambda r: (navigiert.append(r.request.url), r.abort()))
+    pg = ctx.new_page(); logs = []
     pg.on("pageerror", lambda e: logs.append("PAGEERROR " + str(e)))
-    seen = {}
-    def handle(route):
-        seen['url'] = route.request.url
-        route.fulfill(status=200, content_type="application/json", body=json.dumps(antwort))
-    pg.route("https://dienst.test/**", handle)
+
+    # 1. Ohne Schlüssel: Favoriten-Hinweis
+    pg.goto("http://127.0.0.1:8765/" + D); pg.wait_for_timeout(400)
+    print("Version:", pg.inner_text("#kopfVersion"), "| Favoriten-Hinweis:", pg.inner_text("#favHinweis"))
+
+    # 2. Schlüssel eintragen
+    pg.click("#einstellungen summary"); pg.fill("#schluessel", "falsch"); pg.click("#schluesselSpeichern"); pg.wait_for_timeout(300)
+    print("Falscher Schlüssel:", pg.inner_text("#schluesselStatus"))
+    pg.fill("#schluessel", SCHLUESSEL); pg.click("#schluesselSpeichern"); pg.wait_for_timeout(400)
+    print("Richtiger Schlüssel:", pg.inner_text("#schluesselStatus"), "| Favoriten:", pg.inner_text("#favListe").replace("\n", " / "))
+
+    # 3. Teilen → Ergebnis → Verlauf → Als Favorit
     text = "Café am Markt\nMarktplatz 3, 58675 Hemer\nhttps://maps.app.goo.gl/tnxVCVgAGfAzY39AA?g_st=ac"
-    from urllib.parse import quote
-    pg.goto("http://127.0.0.1:8765/?dienst=" + quote("https://dienst.test/exec") + "&text=" + quote(text))
+    pg.goto("http://127.0.0.1:8765/" + D + "&text=" + quote(text))
     pg.wait_for_selector("#ergebnis:not([hidden])", timeout=5000)
-    print("Haupt:", pg.inner_text("#ergHaupt"))
-    print("Hinweis:", pg.inner_text("#ergHinweis"))
-    print("Weitere:", pg.inner_text("#liste").replace("\n", " | "))
-    print("Dienst-Aufruf:", seen.get('url', '')[:120])
-    print("URL nach Start:", pg.url)
-    pg.screenshot(path=out + "/ergebnis.png", full_page=True)
-    pg.click("#knopfKopieren")
-    pg.wait_for_timeout(300)
-    print("Zwischenablage:", pg.evaluate("navigator.clipboard.readText()"))
-    print("Kopf-Version:", pg.inner_text("#kopfVersion"), "| Schalter sichtbar:", pg.is_visible("#schalterName"))
-    pg.uncheck("#mitName"); pg.wait_for_timeout(200)
-    print("Ohne Name:", pg.inner_text("#ergHaupt"))
-    pg.check("#mitName"); pg.wait_for_timeout(200)
-    print("Mit Name:", pg.inner_text("#ergHaupt"))
-    print("Methode K:", pg.evaluate("cupraZiel.METHODEN.K.url"))
-    pg.wait_for_timeout(500)
-    print("Service Worker aktiv:", pg.evaluate("navigator.serviceWorker.controller ? 'ja' : 'nein (erst nach Neuladen)'"))
-    pg.reload(); pg.wait_for_timeout(800)
-    print("Nach Neuladen (über SW):", pg.evaluate("navigator.serviceWorker.controller ? 'SW steuert' : 'kein SW'"), "| Titel:", pg.title())
-    # Manifest + Fehlerfall
-    print("Manifest share_target:", json.load(open(root + "/manifest.json"))["share_target"])
+    print("Haupt:", pg.inner_text("#ergHaupt"), "| Verlauf:", pg.inner_text("#verlaufListe").replace("\n", " / "))
+    pg.click("#knopfFavorit"); pg.wait_for_timeout(200)
+    print("Formular:", pg.input_value("#favName"), "|", pg.input_value("#favAdresse"))
+    pg.fill("#favName", "Café Hemer"); pg.click("#favSpeichern"); pg.wait_for_timeout(400)
+    print("Nach Speichern:", pg.inner_text("#favListe").replace("\n", " / "))
+    pg.screenshot(path=out + "/favoriten.png", full_page=True)
+
+    # 4. Favorit antippen → kopiert + myCupra (Karte)
+    pg.click("#favListe .fav >> nth=1"); pg.wait_for_timeout(700)
+    print("Zwischenablage:", pg.evaluate("navigator.clipboard.readText()"), "| geöffnet:", navigiert[-1][:60] if navigiert else "-")
+
+    # 5. Bearbeiten: nach oben, löschen
+    pg.click("#favBearbeiten"); pg.wait_for_timeout(100)
+    pg.click("#favListe .favzeile >> nth=1 >> text=↑"); pg.wait_for_timeout(500)
+    print("Nach ↑:", [f["name"] for f in favs])
+    pg.click("#favListe .favzeile >> nth=1 >> text=✕"); pg.wait_for_timeout(400)
+    print("Nach ✕:", [f["name"] for f in favs], "| Schlüssel nie in URL:", all("geheim" not in u for u in navigiert))
+
+    # 6. Schnellzugriff + Rückkehr
+    navigiert.clear()
+    pg.goto("http://127.0.0.1:8765/" + D + "&oeffne=" + quote("map/evroute")); pg.wait_for_timeout(500)
+    print("Schnellzugriff:", pg.inner_text("#knopfSchnell"), "| automatisch geöffnet:", navigiert[-1][:50] if navigiert else "-")
+    pg.goto("http://127.0.0.1:8765/" + D + "&zurueck=" + quote("S-destsync")); pg.wait_for_timeout(300)
+    print("Rückkehr:", pg.inner_text("#status")[:80])
+    pg.goto("http://127.0.0.1:8765/" + D + "&zurueck=M-K"); pg.wait_for_timeout(300)
+    print("Rückkehr K:", pg.inner_text("#status")[:40])
+
+    # 7. Fehlerfall, Manifest
     pg2 = ctx.new_page()
     pg2.route("https://dienst.test/**", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps({"ok": False, "fehler": "Kein Google-Maps-Link gefunden"})))
-    pg2.goto("http://127.0.0.1:8765/?dienst=" + quote("https://dienst.test/exec") + "&text=" + quote("nur Text"))
-    pg2.wait_for_timeout(800)
-    print("Fehlerfall:", pg2.inner_text("#status"), "| Ergebnis sichtbar:", pg2.is_visible("#ergebnis"))
-    pg3 = ctx.new_page(); pg3.goto("http://127.0.0.1:8765/"); pg3.wait_for_timeout(300)
-    pg3.screenshot(path=out + "/start.png", full_page=True)
-    print("Logs:", logs)
+    pg2.goto("http://127.0.0.1:8765/" + D + "&text=" + quote("nur Text")); pg2.wait_for_timeout(600)
+    print("Fehlerfall:", pg2.inner_text("#status"))
+    m = json.load(open(root + "/manifest.json"))
+    print("Manifest:", m["id"], "| Shortcuts:", [s["short_name"] for s in m["shortcuts"]])
+    print("Fehler im Browser:", logs)
     b.close()
 srv.shutdown()

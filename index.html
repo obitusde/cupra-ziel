@@ -1,22 +1,25 @@
 <!doctype html>
 <!--
   Cupra-Ziel — PWA
-  Version 0.1.2 (19.10.2026)
+  Version 0.2.0 (19.10.2026)
 
   Google Maps → Teilen → Cupra-Ziel. Die App schickt den geteilten Text an das Apps Script
   (Web-Dienst), bekommt Adresse und Koordinaten zurück und bietet „Kopieren & myCupra öffnen".
-  In myCupra: Karte → Suche → Einfügen → An Fahrzeug senden.
+  myCupra öffnet direkt auf der Karte: Suche → Einfügen → An Fahrzeug senden.
+  Dazu Favoriten (Google Sheet über Apps Script, mit Schlüssel) und Verlauf (nur auf diesem Handy).
 
   Versionen:
     0.1.0  erste Fassung: Teilen-Ziel, Auflösen über Apps Script, Varianten zum Kopieren,
            drei Öffnen-Methoden für myCupra zum Testen (A/B/C)
     0.1.1  Manifest-id "/cupra-ziel/" (vorher "./" = gleiche id wie Fotoschatz → Installation hing);
-           myCupra öffnen nie mehr über den Play Store: jede Methode hat browser_fallback_url zurück
-           in die App (?zurueck=X) mit Hinweis; Standard jetzt B (cupra://oauth-callback), weil A
-           bei Christof im Play Store landete
+           myCupra öffnen nie mehr über den Play Store: browser_fallback_url zurück in die App
     0.1.2  Standard-Methode K: myCupra direkt auf der Karte (cupra://map – Route /map aus der APK 2.15.0,
-           DeepLinkManager nimmt cupra:/<pfad>); POI-Name vor die Adresse (Schalter „Name mitkopieren",
-           gemerkt); Version oben sichtbar; Manifest und Service Worker mit ?v=, damit Updates ankommen
+           DeepLinkManager nimmt cupra:/<pfad>); POI-Name vor die Adresse (Schalter „Name mitkopieren");
+           Version oben sichtbar; Manifest und Service Worker mit ?v=, damit Updates ankommen
+    0.2.0  Favoriten (Google Sheet, Christof 19.10.2026: „b in google sheets") als große Knöpfe auf der
+           Startseite, bearbeiten/sortieren/löschen; Verlauf der letzten 10 Ziele mit ☆; Einstellungen
+           mit Schlüssel; Schnellzugriffe am App-Icon und Testknöpfe für myCupra-Seiten (/map/evroute,
+           /destsync, /tourimport); Methoden A und C entfernt (K klappt, B bleibt als Rückfall)
 -->
 <html lang="de">
 <head>
@@ -24,7 +27,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cupra-Ziel</title>
 <meta name="theme-color" content="#161616">
-<link rel="manifest" href="manifest.json?v=0.1.2">
+<link rel="manifest" href="manifest.json?v=0.2.0">
 <link rel="icon" href="icon-192.png">
 <style>
   :root {
@@ -37,33 +40,46 @@
   body { font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 16px 16px 40px; max-width: 560px; margin: 0 auto; }
   h1 { font-size: 20px; margin: 4px 0 14px; display: flex; align-items: center; gap: 10px; }
   h1 img { width: 28px; height: 28px; border-radius: 6px; }
+  h1 .version { font-size: 13px; font-weight: 400; color: var(--leise); margin-left: auto; }
+  h2 { font-size: 15px; font-weight: 600; color: var(--leise); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 10px; display: flex; align-items: center; }
+  h2 button { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; padding: 6px 12px; font-size: 14px; }
   .karte { background: var(--flaeche); border: 1px solid var(--rand); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
   .leise { color: var(--leise); font-size: 14px; }
   .name { font-size: 15px; color: var(--leise); margin-bottom: 4px; }
   .haupt { font-size: 22px; font-weight: 600; word-break: break-word; margin-bottom: 12px; }
   button { font: inherit; border-radius: 12px; border: 1px solid var(--rand); background: #2c2c2c; color: var(--text); padding: 12px 14px; cursor: pointer; }
   button:active { transform: scale(0.99); }
+  button:disabled { opacity: .5; }
   .gross { width: 100%; background: var(--kupfer); border-color: var(--kupfer-dunkel); color: #1b120c; font-weight: 700; font-size: 19px; padding: 16px; margin-bottom: 10px; }
-  .breit { width: 100%; }
+  .breit { width: 100%; margin-bottom: 8px; }
+  .zwei { display: flex; gap: 8px; } .zwei > * { flex: 1; }
   .zeile { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--rand); }
   .zeile:first-child { border-top: 0; }
   .zeile .t { flex: 1; word-break: break-word; }
   .zeile .art { display: block; font-size: 12px; color: var(--leise); text-transform: uppercase; letter-spacing: .04em; }
   .zeile button { padding: 8px 12px; font-size: 15px; white-space: nowrap; }
+  .fav { display: block; width: 100%; text-align: left; margin-bottom: 8px; padding: 14px 16px; border-color: #4a3426; background: #2a221c; }
+  .fav b { display: block; font-size: 19px; }
+  .fav span { display: block; font-size: 14px; color: var(--leise); word-break: break-word; }
+  .favzeile { display: flex; gap: 6px; align-items: stretch; margin-bottom: 8px; }
+  .favzeile .fav { margin: 0; flex: 1; }
+  .favzeile .klein { padding: 0 12px; font-size: 18px; }
   .hinweis { border-left: 3px solid var(--warn); padding: 8px 10px; background: #2a2416; border-radius: 6px; font-size: 15px; margin: 4px 0 12px; }
   .fehler { border-left-color: var(--schlecht); background: #2c1b18; }
-  textarea { width: 100%; min-height: 76px; font: inherit; color: var(--text); background: #1c1c1c; border: 1px solid var(--rand); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  .gut { border-left-color: var(--gut); background: #1b2a1e; }
+  textarea, input[type=text], input[type=password] { width: 100%; font: inherit; color: var(--text); background: #1c1c1c; border: 1px solid var(--rand); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  textarea { min-height: 76px; }
+  label.feld { display: block; font-size: 14px; color: var(--leise); margin-bottom: 4px; }
   a { color: var(--kupfer); }
   details summary { cursor: pointer; color: var(--leise); }
   .methoden { display: grid; gap: 8px; margin-top: 10px; }
   .methoden button.aktiv { border-color: var(--kupfer); }
-  #meldung { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #000; border: 1px solid var(--rand); padding: 10px 16px; border-radius: 999px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .schalter { display: flex; align-items: center; gap: 10px; font-size: 16px; color: var(--leise); margin: -4px 0 12px; }
+  .schalter input { width: 22px; height: 22px; accent-color: var(--kupfer); }
+  #meldung { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #000; border: 1px solid var(--rand); padding: 10px 16px; border-radius: 999px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; text-align: center; }
   #meldung.zeigen { opacity: 1; }
   .lade { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--leise); border-top-color: transparent; border-radius: 50%; animation: drehen 0.8s linear infinite; vertical-align: -2px; margin-right: 8px; }
   @keyframes drehen { to { transform: rotate(360deg); } }
-  .schalter { display: flex; align-items: center; gap: 10px; font-size: 16px; color: var(--leise); margin: -4px 0 12px; }
-  .schalter input { width: 22px; height: 22px; accent-color: var(--kupfer); }
-  h1 .version { font-size: 13px; font-weight: 400; color: var(--leise); margin-left: auto; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -72,14 +88,37 @@
 
 <div id="status" class="karte" hidden></div>
 
+<!-- Schnellzugriff vom App-Icon (?oeffne=…) -->
+<div id="schnell" class="karte" hidden>
+  <div class="name">Schnellzugriff</div>
+  <button class="gross" id="knopfSchnell"></button>
+</div>
+
+<!-- Ergebnis nach dem Teilen -->
 <div id="ergebnis" class="karte" hidden>
   <div class="name" id="ergName"></div>
   <div class="haupt" id="ergHaupt"></div>
   <label class="schalter" id="schalterName" hidden><input type="checkbox" id="mitName"> Name mitkopieren</label>
   <div id="ergHinweis" class="hinweis" hidden></div>
   <button class="gross" id="knopfOeffnen">Kopieren &amp; myCupra öffnen</button>
-  <button class="breit" id="knopfKopieren">Nur kopieren</button>
+  <div class="zwei">
+    <button class="breit" id="knopfKopieren">Nur kopieren</button>
+    <button class="breit" id="knopfFavorit">☆ Als Favorit</button>
+  </div>
   <p class="leise">In myCupra (öffnet auf der Karte): <b>Suche → Einfügen → An Fahrzeug senden</b></p>
+</div>
+
+<!-- Favorit anlegen / bearbeiten -->
+<div id="favForm" class="karte" hidden>
+  <h2 id="favFormTitel">Favorit speichern</h2>
+  <label class="feld" for="favName">Name (wird als Knopf angezeigt)</label>
+  <input type="text" id="favName" maxlength="80">
+  <label class="feld" for="favAdresse">Text für die myCupra-Suche</label>
+  <input type="text" id="favAdresse" maxlength="200">
+  <div class="zwei">
+    <button class="gross" id="favSpeichern">Speichern</button>
+    <button class="breit" id="favAbbrechen">Abbrechen</button>
+  </div>
 </div>
 
 <div id="weitere" class="karte" hidden>
@@ -88,16 +127,40 @@
   <p class="leise" id="pruefLink"></p>
 </div>
 
+<!-- Favoriten -->
+<div id="favoriten" class="karte">
+  <h2>Favoriten <button id="favBearbeiten" hidden>Bearbeiten</button></h2>
+  <div id="favListe"></div>
+  <p class="leise" id="favHinweis"></p>
+</div>
+
+<!-- Verlauf -->
+<div id="verlauf" class="karte" hidden>
+  <h2>Zuletzt geteilt <button id="verlaufLeeren">Leeren</button></h2>
+  <div id="verlaufListe"></div>
+</div>
+
 <div id="eingabe" class="karte">
   <div class="leise" style="margin-bottom:8px">In Google Maps einen Ort öffnen → <b>Teilen</b> → <b>Cupra-Ziel</b>. Oder hier einen Link einfügen:</div>
   <textarea id="feld" placeholder="https://maps.app.goo.gl/…"></textarea>
   <button class="breit" id="knopfAufloesen">Adresse ermitteln</button>
 </div>
 
+<details class="karte" id="einstellungen">
+  <summary>Einstellungen</summary>
+  <p class="leise">Favoriten liegen im Google Sheet „Cupra-Ziel Favoriten". Den Schlüssel zeigt das Apps Script einmalig im Editor (Funktion <b>einrichten</b>).</p>
+  <label class="feld" for="schluessel">Schlüssel für die Favoriten</label>
+  <input type="password" id="schluessel" autocomplete="off" spellcheck="false">
+  <button class="breit" id="schluesselSpeichern">Schlüssel speichern und prüfen</button>
+  <div id="schluesselStatus" class="leise"></div>
+</details>
+
 <details class="karte" id="diagnose">
-  <summary>myCupra öffnen – Methode testen</summary>
-  <p class="leise">Welche Methode myCupra sauber öffnet, ist noch nicht geprüft. Tippe der Reihe nach, die funktionierende wird gemerkt.</p>
+  <summary>myCupra öffnen – Methode und Seiten testen</summary>
+  <p class="leise">So öffnet „Kopieren &amp; myCupra öffnen" die App (gemerkt wird die gewählte):</p>
   <div class="methoden" id="methoden"></div>
+  <p class="leise" style="margin-top:14px">Andere Seiten in myCupra (Test – was dahinter steckt, ist nicht bekannt):</p>
+  <div class="methoden" id="seiten"></div>
   <p class="leise" id="versionen"></p>
 </details>
 
@@ -105,56 +168,81 @@
 
 <script>
 'use strict';
-const APP_VERSION = '0.1.2';
+const APP_VERSION = '0.2.0';
 const PAKET = 'com.cupra.mycupra';
+
+// myCupra nimmt cupra:/<route> an (DeepLinkManager, APK 2.15.0), z. B. cupra://map → Route /map.
 // Klappt ein Intent nicht, öffnet Chrome sonst den Play Store. Mit S.browser_fallback_url geht es
-// stattdessen zurück in diese App (?zurueck=<Methode>), die dann einen Hinweis zeigt.
-const zurueck = m => 'S.browser_fallback_url=' + encodeURIComponent(new URL('./?zurueck=' + m, location.href).href);
+// stattdessen zurück in diese App (?zurueck=<kennung>), die dann einen Hinweis zeigt.
+const zurueck = k => 'S.browser_fallback_url=' + encodeURIComponent(new URL('./?zurueck=' + encodeURIComponent(k), location.href).href);
+const myCupraUrl = (pfad, kennung) => 'intent://' + pfad + '#Intent;scheme=cupra;package=' + PAKET + ';' + zurueck(kennung) + ';end';
 const METHODEN = {
-  K: { titel: 'K – direkt auf die Karte (cupra://map)', url: 'intent://map#Intent;scheme=cupra;package=' + PAKET + ';' + zurueck('K') + ';end' },
-  A: { titel: 'A – App-Start (Launcher)', url: 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=' + PAKET + ';' + zurueck('A') + ';end' },
-  B: { titel: 'B – App-Adresse cupra://oauth-callback', url: 'intent://oauth-callback#Intent;scheme=cupra;package=' + PAKET + ';' + zurueck('B') + ';end' },
-  C: { titel: 'C – App-Adresse cupra:// (ohne Paket)', url: 'intent://oauth-callback#Intent;scheme=cupra;' + zurueck('C') + ';end' },
+  K: { titel: 'K – direkt auf die Karte (cupra://map)', pfad: 'map' },
+  B: { titel: 'B – App ohne bestimmte Seite (cupra://oauth-callback)', pfad: 'oauth-callback' },
+};
+const SEITEN = {
+  'map': { titel: 'Karte', kurz: 'Karte' },
+  'map/evroute': { titel: 'EV-Routenplaner (/map/evroute)', kurz: 'Routenplaner' },
+  'destsync': { titel: 'Ziele (/destsync)', kurz: 'Ziele' },
+  'tourimport': { titel: 'Tour-Import (/tourimport)', kurz: 'Tour-Import' },
+  'home': { titel: 'Startseite (/home)', kurz: 'Startseite' },
 };
 const STANDARD_METHODE = 'K';
-const SPEICHER_METHODE = 'cupra-ziel.methode2';   // neuer Schlüssel ab 0.1.2 → alle starten mit K
+const SPEICHER = {
+  methode: 'cupra-ziel.methode2',
+  mitName: 'cupra-ziel.mitName',
+  schluessel: 'cupra-ziel.schluessel',
+  favoriten: 'cupra-ziel.favoriten',     // Zwischenspeicher der Liste aus dem Sheet (sofort sichtbar, offline)
+  verlauf: 'cupra-ziel.verlauf',
+};
+const VERLAUF_MAX = 10;
 
 const $ = id => document.getElementById(id);
-let aktuellerText = '';
 
 // ---------- kleine Helfer ----------
-function lies(schluessel) { try { return localStorage.getItem(schluessel); } catch (e) { return null; } }
-function schreib(schluessel, wert) { try { localStorage.setItem(schluessel, wert); } catch (e) { /* egal */ } }
-function methode() { const m = lies(SPEICHER_METHODE); return METHODEN[m] ? m : STANDARD_METHODE; }
+function lies(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function schreib(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* egal */ } }
+function liesJson(k, rueckfall) { try { const v = JSON.parse(lies(k)); return v === null ? rueckfall : v; } catch (e) { return rueckfall; } }
+function methode() { const m = lies(SPEICHER.methode); return METHODEN[m] ? m : STANDARD_METHODE; }
+function mitName() { return lies(SPEICHER.mitName) !== '0'; }
+function schluessel() { return (lies(SPEICHER.schluessel) || '').trim(); }
 
 function melde(text) {
   const m = $('meldung'); m.textContent = text; m.classList.add('zeigen');
-  clearTimeout(melde.t); melde.t = setTimeout(() => m.classList.remove('zeigen'), 1800);
+  clearTimeout(melde.t); melde.t = setTimeout(() => m.classList.remove('zeigen'), 2000);
 }
 function status(html, art) {
   const s = $('status'); s.hidden = !html; s.className = 'karte' + (art ? ' ' + art : ''); s.innerHTML = html || '';
 }
 function esc(t) { return String(t).replace(/[&<>"]/g, z => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[z])); }
+function el(tag, klasse, text) { const e = document.createElement(tag); if (klasse) e.className = klasse; if (text !== undefined) e.textContent = text; return e; }
 
 async function kopiere(text) {
   try { await navigator.clipboard.writeText(text); return true; }
   catch (e) {
-    // Rückfall für ältere Browser
     const f = document.createElement('textarea'); f.value = text; document.body.appendChild(f); f.select();
     let ok = false; try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
     f.remove(); return ok;
   }
 }
-function oeffneMyCupra(m) { window.location.href = METHODEN[m || methode()].url; }
+function oeffneSeite(pfad, kennung) { window.location.href = myCupraUrl(pfad, kennung || pfad); }
+function oeffneMyCupra(m) { const k = m || methode(); oeffneSeite(METHODEN[k].pfad, 'M-' + k); }
+
+/** Text kopieren und myCupra auf der Karte öffnen – für Ergebnis, Favoriten und Verlauf. */
+async function kopiereUndOeffne(text) {
+  if (await kopiere(text)) { melde('Kopiert – myCupra wird geöffnet'); setTimeout(() => oeffneMyCupra(), 250); }
+  else melde('Kopieren nicht möglich');
+}
 
 // ---------- Apps-Script-Dienst ----------
 async function dienstUrl() {
   const p = new URLSearchParams(location.search);
   if (p.get('dienst')) return p.get('dienst');                 // für Tests
+  if (dienstUrl.gemerkt) return dienstUrl.gemerkt;
   const r = await fetch('apps-script/deployment-id.txt?t=' + Date.now(), { cache: 'no-store' });
   if (!r.ok) throw new Error('Apps Script ist noch nicht veröffentlicht (deployment-id.txt fehlt).');
   const id = (await r.text()).trim();
-  return 'https://script.google.com/macros/s/' + id + '/exec';
+  return (dienstUrl.gemerkt = 'https://script.google.com/macros/s/' + id + '/exec');
 }
 
 async function loese(text) {
@@ -165,17 +253,20 @@ async function loese(text) {
   return j;
 }
 
+/** Favoriten-Anfrage: POST mit Text-Körper (keine CORS-Vorabprüfung), Schlüssel nicht in der Adresse. */
+async function favAnfrage(daten) {
+  const url = await dienstUrl();
+  const r = await fetch(url, { method: 'POST', body: JSON.stringify(Object.assign({ schluessel: schluessel() }, daten)) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.fehler || 'Unbekannter Fehler');
+  return j;
+}
+
 // ---------- Teilen-Text auswerten (sofort, ohne Netz) ----------
 function zeilenAusTeilen(text) {
   return String(text || '').split(/\r?\n/).map(z => z.trim())
     .filter(z => z && !/^https?:\/\//i.test(z)).map(z => z.replace(/\s*https?:\/\/\S+/g, '').trim()).filter(Boolean);
 }
-
-// ---------- Anzeige ----------
-let hauptText = '';
-let letztesErgebnis = null;
-const SPEICHER_MIT_NAME = 'cupra-ziel.mitName';
-function mitName() { return lies(SPEICHER_MIT_NAME) !== '0'; }   // Standard: Name mitkopieren
 function istPlusCode(t) { return /(^|\s)[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}(\s|,|$)/i.test(t); }
 /** POI-Name, wenn es einer ist (keine Adresse, kein Plus Code, keine Koordinate). */
 function poiName(j, geteilteZeilen, adresse) {
@@ -183,6 +274,11 @@ function poiName(j, geteilteZeilen, adresse) {
   return kandidaten.find(n => n && n !== adresse && !/\b\d{4,5}\b/.test(n) && !/^\d/.test(n) && !istPlusCode(n)
     && n !== 'Nur aus dem Teilen-Text') || '';
 }
+
+// ---------- Ergebnis ----------
+let hauptText = '';
+let hauptName = '';
+let letztesErgebnis = null;
 
 function zeigeErgebnis(j, geteilteZeilen) {
   letztesErgebnis = { j, geteilteZeilen };
@@ -197,19 +293,20 @@ function zeigeErgebnis(j, geteilteZeilen) {
     varianten.push({ art: 'Adresse aus Google Maps', text: geteilteAdresse }, ...ohne);
     ausTeilen = true;
   }
-  // Übrige Zeilen aus dem Teilen-Text (z. B. der Name) als zusätzliche Varianten
   geteilteZeilen.forEach(z => { if (!varianten.some(v => v.text === z)) varianten.push({ art: 'Aus dem Teilen-Text', text: z }); });
   if (!varianten.length) { status('Keine Adresse gefunden.', 'hinweis fehler'); return; }
 
-  // POI-Name vor die Adresse setzen (Schalter „Name mitkopieren"), die reine Adresse bleibt als Reserve
+  // POI-Name vor die Adresse (Schalter „Name mitkopieren"), die reine Adresse bleibt als Reserve
   const name = poiName(j, geteilteZeilen, varianten[0].text);
   $('schalterName').hidden = !name;
   $('mitName').checked = mitName();
+  const nurAdresse = varianten[0].text;
   if (name && mitName() && varianten[0].text.indexOf(name) < 0) {
     varianten.unshift({ art: 'Name + Adresse', text: name + ', ' + varianten[0].text });
   }
 
   hauptText = varianten[0].text;
+  hauptName = name || '';
   $('ergName').textContent = name || j.name || varianten[0].art;
   $('ergHaupt').textContent = hauptText;
   const h = $('ergHinweis');
@@ -220,85 +317,238 @@ function zeigeErgebnis(j, geteilteZeilen) {
   } else h.hidden = true;
   $('ergebnis').hidden = false;
 
-  const liste = $('liste'); liste.innerHTML = '';
+  const liste = $('liste'); liste.replaceChildren();
   varianten.slice(1).forEach(v => {
-    const z = document.createElement('div'); z.className = 'zeile';
-    z.innerHTML = '<div class="t"><span class="art">' + esc(v.art) + '</span>' + esc(v.text) + '</div>';
-    const k = document.createElement('button'); k.textContent = 'Kopieren';
+    const z = el('div', 'zeile');
+    const t = el('div', 't'); t.append(el('span', 'art', v.art), document.createTextNode(v.text));
+    const k = el('button', '', 'Kopieren');
     k.onclick = async () => { if (await kopiere(v.text)) melde('Kopiert'); };
-    z.appendChild(k); liste.appendChild(z);
+    z.append(t, k); liste.append(z);
   });
   $('pruefLink').innerHTML = j.lat !== null && j.lat !== undefined
     ? '<a href="https://www.google.com/maps/search/?api=1&query=' + j.lat + ',' + j.lon + '" target="_blank" rel="noopener">Punkt in Google Maps prüfen</a>' : '';
   $('weitere').hidden = varianten.length < 2 && !$('pruefLink').innerHTML;
   status('');
   $('versionen').textContent = 'App v' + APP_VERSION + ' · Apps Script v' + (j.version || '?');
+  return { name: name || j.name || '', text: hauptText, adresse: nurAdresse, lat: j.lat, lon: j.lon };
 }
 
 async function verarbeite(text) {
-  aktuellerText = text;
-  $('ergebnis').hidden = true; $('weitere').hidden = true;
+  $('ergebnis').hidden = true; $('weitere').hidden = true; $('favForm').hidden = true;
   const zeilen = zeilenAusTeilen(text);
   status('<span class="lade"></span>Adresse wird ermittelt …');
   try {
     const j = await loese(text);
-    zeigeErgebnis(j, zeilen);
+    const e = zeigeErgebnis(j, zeilen);
+    if (e) merkeVerlauf(e);
   } catch (fehler) {
-    if (zeilen.length) {
-      zeigeErgebnis({ name: 'Nur aus dem Teilen-Text', varianten: [], abstandM: null, lat: null }, zeilen);
-      status('Auflösen fehlgeschlagen: ' + esc(fehler.message), 'hinweis fehler');
-    } else {
-      status('Auflösen fehlgeschlagen: ' + esc(fehler.message), 'hinweis fehler');
-    }
+    if (zeilen.length) zeigeErgebnis({ name: 'Nur aus dem Teilen-Text', varianten: [], abstandM: null, lat: null }, zeilen);
+    status('Auflösen fehlgeschlagen: ' + esc(fehler.message), 'hinweis fehler');
   }
 }
 
-// ---------- Knöpfe ----------
-$('knopfOeffnen').onclick = async () => {
-  if (await kopiere(hauptText)) { melde('Kopiert – myCupra wird geöffnet'); setTimeout(() => oeffneMyCupra(), 250); }
-  else melde('Kopieren nicht möglich');
-};
-$('knopfKopieren').onclick = async () => { if (await kopiere(hauptText)) melde('Kopiert'); };
-$('knopfAufloesen').onclick = () => { const t = $('feld').value.trim(); if (t) verarbeite(t); };
-
-function baueMethoden() {
-  const box = $('methoden'); box.innerHTML = '';
-  Object.keys(METHODEN).forEach(m => {
-    const b = document.createElement('button');
-    b.textContent = METHODEN[m].titel + (m === methode() ? '  ✓ gemerkt' : '');
-    b.className = m === methode() ? 'aktiv' : '';
-    b.onclick = () => { schreib(SPEICHER_METHODE, m); baueMethoden(); oeffneMyCupra(m); };
-    box.appendChild(b);
+// ---------- Verlauf (nur auf diesem Handy) ----------
+function verlauf() { return liesJson(SPEICHER.verlauf, []); }
+function merkeVerlauf(e) {
+  const alt = verlauf().filter(v => v.text !== e.text);
+  alt.unshift({ name: e.name, text: e.text, lat: e.lat, lon: e.lon, zeit: Date.now() });
+  schreib(SPEICHER.verlauf, JSON.stringify(alt.slice(0, VERLAUF_MAX)));
+  zeigeVerlauf();
+}
+function zeitText(ms) {
+  const d = new Date(ms), heute = new Date();
+  const uhr = d.toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === heute.toDateString() ? 'heute ' + uhr : d.toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit' }) + ' ' + uhr;
+}
+function zeigeVerlauf() {
+  const liste = verlauf();
+  $('verlauf').hidden = !liste.length;
+  const box = $('verlaufListe'); box.replaceChildren();
+  liste.forEach(v => {
+    const zeile = el('div', 'favzeile');
+    const k = el('button', 'fav');
+    k.append(el('b', '', v.name || v.text), el('span', '', (v.name ? v.text + ' · ' : '') + zeitText(v.zeit)));
+    k.onclick = () => kopiereUndOeffne(v.text);
+    const stern = el('button', 'klein', '☆');
+    stern.title = 'Als Favorit speichern';
+    stern.onclick = () => oeffneFavForm({ name: v.name, adresse: v.text, lat: v.lat, lon: v.lon });
+    zeile.append(k, stern); box.append(zeile);
   });
 }
 
+// ---------- Favoriten (Google Sheet) ----------
+let favoriten = liesJson(SPEICHER.favoriten, []);
+let bearbeiten = false;
+
+function zeigeFavoriten() {
+  const box = $('favListe'); box.replaceChildren();
+  const ohneSchluessel = !schluessel();
+  $('favBearbeiten').hidden = ohneSchluessel || !favoriten.length;
+  $('favBearbeiten').textContent = bearbeiten ? 'Fertig' : 'Bearbeiten';
+  if (ohneSchluessel) {
+    $('favHinweis').innerHTML = 'Noch nicht eingerichtet: Schlüssel unter <b>Einstellungen</b> eintragen.';
+    return;
+  }
+  $('favHinweis').textContent = favoriten.length ? '' : 'Noch keine Favoriten. Nach dem Teilen „☆ Als Favorit" tippen.';
+  favoriten.forEach((f, i) => {
+    const zeile = el('div', 'favzeile');
+    const k = el('button', 'fav');
+    k.append(el('b', '', f.name), el('span', '', f.adresse));
+    k.onclick = () => bearbeiten ? oeffneFavForm(f) : kopiereUndOeffne(f.adresse);
+    zeile.append(k);
+    if (bearbeiten) {
+      const hoch = el('button', 'klein', '↑'); hoch.disabled = i === 0; hoch.title = 'Nach oben';
+      hoch.onclick = () => verschiebe(i, -1);
+      const weg = el('button', 'klein', '✕'); weg.title = 'Löschen';
+      weg.onclick = () => loescheFavorit(f);
+      zeile.append(hoch, weg);
+    }
+    box.append(zeile);
+  });
+}
+
+function setzeFavoriten(liste) {
+  favoriten = liste || [];
+  schreib(SPEICHER.favoriten, JSON.stringify(favoriten));
+  zeigeFavoriten();
+}
+
+async function ladeFavoriten() {
+  if (!schluessel()) { zeigeFavoriten(); return; }
+  try { setzeFavoriten((await favAnfrage({ aktion: 'liste' })).favoriten); }
+  catch (fehler) { $('favHinweis').textContent = 'Favoriten nicht aktualisiert: ' + fehler.message + (favoriten.length ? ' (zeige gespeicherte)' : ''); }
+}
+
+let formFav = null;
+function oeffneFavForm(f) {
+  if (!schluessel()) { $('einstellungen').open = true; melde('Erst den Schlüssel eintragen'); $('einstellungen').scrollIntoView({ behavior: 'smooth' }); return; }
+  formFav = f || {};
+  $('favFormTitel').textContent = formFav.id ? 'Favorit bearbeiten' : 'Favorit speichern';
+  $('favName').value = formFav.name || '';
+  $('favAdresse').value = formFav.adresse || '';
+  $('favForm').hidden = false;
+  $('favForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('favName').focus();
+}
+
+async function speichereFavorit() {
+  const fav = Object.assign({}, formFav, { name: $('favName').value.trim(), adresse: $('favAdresse').value.trim() });
+  if (!fav.adresse) { melde('Text für die Suche fehlt'); return; }
+  $('favSpeichern').disabled = true;
+  try {
+    const j = await favAnfrage({ aktion: 'speichern', fav: fav });
+    setzeFavoriten(j.favoriten);
+    $('favForm').hidden = true;
+    melde('Favorit gespeichert');
+  } catch (fehler) { melde('Nicht gespeichert: ' + fehler.message); }
+  $('favSpeichern').disabled = false;
+}
+
+async function loescheFavorit(f) {
+  try { setzeFavoriten((await favAnfrage({ aktion: 'loeschen', id: f.id })).favoriten); melde('Gelöscht'); }
+  catch (fehler) { melde('Nicht gelöscht: ' + fehler.message); }
+}
+
+/** Reihenfolge neu durchnummerieren und die zwei betroffenen Einträge speichern. */
+async function verschiebe(i, richtung) {
+  const j = i + richtung;
+  if (j < 0 || j >= favoriten.length) return;
+  const liste = favoriten.slice();
+  [liste[i], liste[j]] = [liste[j], liste[i]];
+  liste.forEach((f, n) => { f.reihenfolge = n + 1; });
+  setzeFavoriten(liste);                                      // sofort anzeigen
+  try {
+    let antwort = null;
+    for (const f of [liste[i], liste[j]]) antwort = await favAnfrage({ aktion: 'speichern', fav: f });
+    if (antwort) setzeFavoriten(antwort.favoriten);
+  } catch (fehler) { melde('Reihenfolge nicht gespeichert: ' + fehler.message); }
+}
+
+// ---------- Einstellungen ----------
+async function speichereSchluessel() {
+  schreib(SPEICHER.schluessel, $('schluessel').value.trim());
+  $('schluesselStatus').textContent = 'Prüfe …';
+  try {
+    await favAnfrage({ aktion: 'pruefen' });
+    $('schluesselStatus').textContent = '✓ Schlüssel passt.';
+    await ladeFavoriten();
+  } catch (fehler) { $('schluesselStatus').textContent = '✕ ' + fehler.message; zeigeFavoriten(); }
+}
+
+// ---------- Methoden und Seiten (Test) ----------
+function baueMethoden() {
+  const box = $('methoden'); box.replaceChildren();
+  Object.keys(METHODEN).forEach(m => {
+    const b = el('button', m === methode() ? 'aktiv' : '', METHODEN[m].titel + (m === methode() ? '  ✓ gemerkt' : ''));
+    b.onclick = () => { schreib(SPEICHER.methode, m); baueMethoden(); oeffneMyCupra(m); };
+    box.append(b);
+  });
+  const seiten = $('seiten'); seiten.replaceChildren();
+  Object.keys(SEITEN).filter(p => p !== 'map').forEach(p => {
+    const b = el('button', '', SEITEN[p].titel);
+    b.onclick = () => oeffneSeite(p, 'S-' + p);
+    seiten.append(b);
+  });
+}
+
+// ---------- Knöpfe ----------
+$('knopfOeffnen').onclick = () => kopiereUndOeffne(hauptText);
+$('knopfKopieren').onclick = async () => { if (await kopiere(hauptText)) melde('Kopiert'); };
+$('knopfFavorit').onclick = () => oeffneFavForm({ name: hauptName, adresse: hauptText,
+  lat: letztesErgebnis && letztesErgebnis.j.lat, lon: letztesErgebnis && letztesErgebnis.j.lon });
+$('knopfAufloesen').onclick = () => { const t = $('feld').value.trim(); if (t) verarbeite(t); };
+$('favSpeichern').onclick = speichereFavorit;
+$('favAbbrechen').onclick = () => { $('favForm').hidden = true; };
+$('favBearbeiten').onclick = () => { bearbeiten = !bearbeiten; zeigeFavoriten(); };
+$('verlaufLeeren').onclick = () => { schreib(SPEICHER.verlauf, '[]'); zeigeVerlauf(); };
+$('schluesselSpeichern').onclick = speichereSchluessel;
+$('mitName').onchange = e => { schreib(SPEICHER.mitName, e.target.checked ? '1' : '0'); if (letztesErgebnis) zeigeErgebnis(letztesErgebnis.j, letztesErgebnis.geteilteZeilen); };
+
 // ---------- Start ----------
-baueMethoden();
-$('versionen').textContent = 'App v' + APP_VERSION;
 $('kopfVersion').textContent = 'v' + APP_VERSION;
-$('mitName').onchange = e => { schreib(SPEICHER_MIT_NAME, e.target.checked ? '1' : '0'); if (letztesErgebnis) zeigeErgebnis(letztesErgebnis.j, letztesErgebnis.geteilteZeilen); };
+$('versionen').textContent = 'App v' + APP_VERSION;
+$('schluessel').value = schluessel();
+baueMethoden();
+zeigeFavoriten();
+zeigeVerlauf();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=1.1.0').catch(() => {});
 
 (function start() {
   const p = new URLSearchParams(location.search);
-  const fehlgeschlagen = p.get('zurueck');
-  if (METHODEN[fehlgeschlagen]) {
-    // Chrome kam über browser_fallback_url zurück: diese Methode öffnet myCupra nicht
-    history.replaceState(null, '', location.pathname);
-    status('Methode ' + fehlgeschlagen + ' hat myCupra nicht geöffnet. Kamst du über „Kopieren &amp; myCupra öffnen“, ist die Adresse schon kopiert – ' +
-      'öffne myCupra selbst oder probiere unten eine andere Methode.', 'hinweis fehler');
+  const testDienst = p.get('dienst') ? '?dienst=' + encodeURIComponent(p.get('dienst')) : '';
+
+  // Chrome kam über browser_fallback_url zurück: diese Methode/Seite öffnet myCupra nicht
+  const zurueckVon = p.get('zurueck');
+  if (zurueckVon) {
+    history.replaceState(null, '', location.pathname + testDienst);
+    const was = zurueckVon.startsWith('M-') ? 'Methode ' + zurueckVon.slice(2)
+      : 'Die myCupra-Seite „' + ((SEITEN[zurueckVon.replace(/^S-/, '')] || {}).titel || zurueckVon) + '"';
+    status(esc(was) + ' ließ sich nicht öffnen. Kamst du über „Kopieren &amp; myCupra öffnen", ist die Adresse schon kopiert – ' +
+      'öffne myCupra selbst oder probiere unten etwas anderes.', 'hinweis fehler');
     $('diagnose').open = true;
-    return;
   }
+
+  // Schnellzugriff vom App-Icon: ?oeffne=<pfad>. Chrome erlaubt das Öffnen einer anderen App ohne
+  // Tipp oft nicht → großer Knopf, und einmal direkt versuchen.
+  const oeffne = p.get('oeffne');
+  if (oeffne && SEITEN[oeffne]) {
+    history.replaceState(null, '', location.pathname + testDienst);
+    $('schnell').hidden = false;
+    $('knopfSchnell').textContent = 'myCupra: ' + SEITEN[oeffne].kurz + ' öffnen';
+    $('knopfSchnell').onclick = () => oeffneSeite(oeffne, 'S-' + oeffne);
+    setTimeout(() => oeffneSeite(oeffne, 'S-' + oeffne), 100);
+  }
+
   const geteilt = [p.get('title'), p.get('text'), p.get('url')].filter(Boolean).join('\n').trim();
   if (geteilt) {
     $('feld').value = geteilt;
-    history.replaceState(null, '', location.pathname + (p.get('dienst') ? '?dienst=' + encodeURIComponent(p.get('dienst')) : ''));
+    history.replaceState(null, '', location.pathname + testDienst);
     verarbeite(geteilt);
   }
+  ladeFavoriten();
 })();
 
-window.cupraZiel = { zeilenAusTeilen, verarbeite, METHODEN, APP_VERSION };
+window.cupraZiel = { zeilenAusTeilen, verarbeite, METHODEN, SEITEN, myCupraUrl, APP_VERSION, get favoriten() { return favoriten; } };
 </script>
 </body>
 </html>

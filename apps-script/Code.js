@@ -1,6 +1,6 @@
 /**
  * Cupra-Ziel — Apps Script (Web-Dienst)
- * Version 0.2.0 (19.10.2026)
+ * Version 0.3.0 (19.10.2026)
  *
  * Nimmt einen geteilten Google-Maps-Link (oder Text mit Link) entgegen, löst ihn auf
  * und liefert Name, Koordinaten und eine Adresse, die in die Suche der myCupra-App passt.
@@ -9,9 +9,13 @@
  *   ?link=<Maps-Link oder geteilter Text>   → { ok, version, name, lat, lon, adresse, varianten[], abstandM, … }
  *   ?test=1                                 → Diagnose mit den Testlinks aus TESTLINKS
  *   ?version=1                              → { ok, version }
+ * doPost (Text-Körper mit JSON, braucht den Schlüssel aus einrichten()):
+ *   { aktion: 'pruefen' | 'liste' | 'speichern' | 'loeschen', schluessel, fav?, id? }
  *
- * Kein Schlüssel nötig: Der Dienst verarbeitet nur Google-Maps-Links und gibt nur öffentliche
- * Kartendaten zurück. Kontingent läuft über Christofs Google-Konto (UrlFetch + Geocoder).
+ * Link auflösen braucht keinen Schlüssel (nur öffentliche Kartendaten). Favoriten (Adressen, z. B.
+ * Familie) liegen im Google Sheet „Cupra-Ziel Favoriten" und gehen nur mit dem Schlüssel – das Repo
+ * und damit die Web-App-Adresse sind öffentlich. Schlüssel und Sheet-ID stehen in den Script
+ * Properties (SCHLUESSEL, FAVORITEN_SHEET_ID), angelegt von einrichten() im Editor.
  *
  * Versionen:
  *   0.1.0  erste Fassung: Link auflösen (aus ladeplanung übernommen), Rückwärts-Geokodierung,
@@ -19,8 +23,11 @@
  *   0.2.0  Links ohne Koordinaten (Suchtext q=…, Plus Code, nur Name) werden über den Geocoder
  *          gesucht; Plus Codes werden in eine Straßenadresse umgewandelt (myCupra kennt keine
  *          Plus Codes); Fehler enthalten die aufgelöste URL (Testlink 3 vom 19.10.2026)
+ *   0.3.0  Favoriten im Google Sheet: einrichten() legt Sheet + Schlüssel an, doPost mit
+ *          pruefen/liste/speichern/loeschen (Christof 19.10.2026: „b in google sheets")
  */
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
+const FAV_SPALTEN = ['id', 'Name', 'Adresse', 'Lat', 'Lon', 'Reihenfolge', 'Angelegt'];
 
 /** Christofs Beispiel-Links vom 18.10.2026 (Hemer u. a.) für die Diagnose. */
 const TESTLINKS = [
@@ -293,4 +300,167 @@ function haversineM_(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
     + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   return 2 * r * Math.asin(Math.sqrt(a));
+}
+
+
+// ---------------------------------------------------------------------------
+// Favoriten (Google Sheet, nur mit Schlüssel)
+// ---------------------------------------------------------------------------
+
+/**
+ * Einmal im Editor ausführen: legt das Sheet „Cupra-Ziel Favoriten" und den Schlüssel an (falls noch
+ * nicht vorhanden) und schreibt beides ins Log. Den Schlüssel in der App unter Einstellungen eintragen.
+ */
+function einrichten() {
+  const eig = PropertiesService.getScriptProperties();
+  let id = eig.getProperty('FAVORITEN_SHEET_ID');
+  let datei = null;
+  if (id) { try { datei = SpreadsheetApp.openById(id); } catch (e) { datei = null; } }
+  if (!datei) {
+    datei = SpreadsheetApp.create('Cupra-Ziel Favoriten');
+    id = datei.getId();
+    eig.setProperty('FAVORITEN_SHEET_ID', id);
+  }
+  favBlatt_(datei);
+  let schluessel = eig.getProperty('SCHLUESSEL');
+  if (!schluessel) {
+    schluessel = Utilities.getUuid().replace(/-/g, '').slice(0, 20);
+    eig.setProperty('SCHLUESSEL', schluessel);
+  }
+  Logger.log('Sheet: ' + datei.getUrl());
+  Logger.log('Schlüssel für die App (Einstellungen): ' + schluessel);
+  return { sheet: datei.getUrl(), schluessel: schluessel };
+}
+
+function doPost(e) {
+  let antwort;
+  try {
+    const anfrage = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    antwort = favoritenAktion_(anfrage);
+  } catch (fehler) {
+    antwort = { ok: false, version: VERSION, fehler: String(fehler && fehler.message || fehler) };
+  }
+  return ContentService.createTextOutput(JSON.stringify(antwort)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function favoritenAktion_(anfrage) {
+  const eig = PropertiesService.getScriptProperties();
+  const soll = eig.getProperty('SCHLUESSEL');
+  if (!soll) return { ok: false, version: VERSION, fehler: 'Favoriten noch nicht eingerichtet (im Editor einrichten() ausführen)' };
+  if (String(anfrage.schluessel || '') !== soll) return { ok: false, version: VERSION, fehler: 'Schlüssel falsch' };
+
+  const aktion = anfrage.aktion;
+  if (aktion === 'pruefen') return { ok: true, version: VERSION };
+
+  const sperre = LockService.getScriptLock();
+  sperre.waitLock(10000);
+  try {
+    const blatt = favBlatt_(SpreadsheetApp.openById(eig.getProperty('FAVORITEN_SHEET_ID')));
+    if (aktion === 'liste') return { ok: true, version: VERSION, favoriten: favoritenLesen_(blatt) };
+    if (aktion === 'speichern') {
+      const fav = favSpeichern_(blatt, anfrage.fav || {});
+      return { ok: true, version: VERSION, fav: fav, favoriten: favoritenLesen_(blatt) };
+    }
+    if (aktion === 'loeschen') {
+      favLoeschen_(blatt, String(anfrage.id || ''));
+      return { ok: true, version: VERSION, favoriten: favoritenLesen_(blatt) };
+    }
+    return { ok: false, version: VERSION, fehler: 'Unbekannte Aktion: ' + aktion };
+  } finally {
+    sperre.releaseLock();
+  }
+}
+
+/** Blatt „Favoriten" mit Kopfzeile (legt es bei Bedarf an). */
+function favBlatt_(datei) {
+  let blatt = datei.getSheetByName('Favoriten');
+  if (!blatt) {
+    const erstes = datei.getSheets()[0];
+    if (erstes && erstes.getLastRow() === 0) { erstes.setName('Favoriten'); blatt = erstes; }
+    else blatt = datei.insertSheet('Favoriten');
+  }
+  if (blatt.getLastRow() === 0) {
+    blatt.appendRow(FAV_SPALTEN);
+    blatt.setFrozenRows(1);
+  }
+  return blatt;
+}
+
+/** Zeilen → [{ id, name, adresse, lat, lon, reihenfolge }], sortiert nach Reihenfolge, dann Name. */
+function favoritenLesen_(blatt) {
+  const werte = blatt.getDataRange().getValues();
+  const kopf = werte[0] || [];
+  const sp = function (n) { return kopf.indexOf(n); };
+  const liste = [];
+  for (let i = 1; i < werte.length; i++) {
+    const z = werte[i];
+    const adresse = String(z[sp('Adresse')] || '').trim();
+    if (!adresse) continue;
+    const lat = Number(z[sp('Lat')]), lon = Number(z[sp('Lon')]);
+    liste.push({
+      id: String(z[sp('id')] || ('z' + (i + 1))),
+      name: String(z[sp('Name')] || '').trim() || adresse,
+      adresse: adresse,
+      lat: isFinite(lat) && z[sp('Lat')] !== '' ? lat : null,
+      lon: isFinite(lon) && z[sp('Lon')] !== '' ? lon : null,
+      reihenfolge: z[sp('Reihenfolge')] === '' || !isFinite(Number(z[sp('Reihenfolge')])) ? 999 : Number(z[sp('Reihenfolge')]),
+    });
+  }
+  liste.sort(function (a, b) { return a.reihenfolge - b.reihenfolge || a.name.localeCompare(b.name, 'de'); });
+  return liste;
+}
+
+/** Neuer Favorit oder Änderung (gleiche id). Gibt den gespeicherten Favoriten zurück. */
+function favSpeichern_(blatt, fav) {
+  const name = alsText_(fav.name);
+  const adresse = alsText_(fav.adresse);
+  if (!adresse) throw new Error('Adresse fehlt');
+  const werte = blatt.getDataRange().getValues();
+  const kopf = werte[0];
+  const sp = function (n) { return kopf.indexOf(n); };
+  const lat = fav.lat === null || fav.lat === undefined || fav.lat === '' ? '' : Number(fav.lat);
+  const lon = fav.lon === null || fav.lon === undefined || fav.lon === '' ? '' : Number(fav.lon);
+
+  for (let i = 1; i < werte.length; i++) {
+    if (fav.id && String(werte[i][sp('id')]) === String(fav.id)) {
+      const zeile = werte[i].slice();
+      zeile[sp('Name')] = name || adresse;
+      zeile[sp('Adresse')] = adresse;
+      if (lat !== '') zeile[sp('Lat')] = lat;
+      if (lon !== '') zeile[sp('Lon')] = lon;
+      if (fav.reihenfolge !== undefined && fav.reihenfolge !== null && fav.reihenfolge !== '') zeile[sp('Reihenfolge')] = Number(fav.reihenfolge);
+      blatt.getRange(i + 1, 1, 1, zeile.length).setValues([zeile]);
+      return { id: String(fav.id), name: name || adresse, adresse: adresse };
+    }
+  }
+  let hoechste = 0;
+  for (let i = 1; i < werte.length; i++) hoechste = Math.max(hoechste, Number(werte[i][sp('Reihenfolge')]) || 0);
+  const id = 'f' + Date.now().toString(36);
+  const neu = [];
+  neu[sp('id')] = id;
+  neu[sp('Name')] = name || adresse;
+  neu[sp('Adresse')] = adresse;
+  neu[sp('Lat')] = lat;
+  neu[sp('Lon')] = lon;
+  neu[sp('Reihenfolge')] = hoechste + 1;
+  neu[sp('Angelegt')] = new Date();
+  for (let k = 0; k < kopf.length; k++) if (neu[k] === undefined) neu[k] = '';
+  blatt.appendRow(neu);
+  return { id: id, name: name || adresse, adresse: adresse };
+}
+
+function favLoeschen_(blatt, id) {
+  const werte = blatt.getDataRange().getValues();
+  const sp = werte[0].indexOf('id');
+  for (let i = werte.length - 1; i >= 1; i--) {
+    if (String(werte[i][sp]) === id) { blatt.deleteRow(i + 1); return true; }
+  }
+  throw new Error('Favorit nicht gefunden');
+}
+
+/** Text fürs Sheet: gekürzt, Formel-Zeichen am Anfang entschärft. */
+function alsText_(wert) {
+  let t = String(wert === undefined || wert === null ? '' : wert).replace(/\s+/g, ' ').trim().slice(0, 200);
+  if (/^[=+\-@]/.test(t)) t = "'" + t;
+  return t;
 }

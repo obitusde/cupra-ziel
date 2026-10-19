@@ -1,6 +1,6 @@
 # Cupra-Ziel — Projektstand für Claude
 
-**Stand 19.10.2026** · App (`index.html`) v0.1.2 · Apps Script (`apps-script/Code.js`) v0.2.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.1.0
+**Stand 19.10.2026** · App (`index.html`) v0.2.0 · Apps Script (`apps-script/Code.js`) v0.3.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.1.0
 
 ## 1. Nutzer und Arbeitsweise (unbedingt beachten)
 
@@ -17,7 +17,9 @@ Christof will Orte aus Google Maps ins **native Navi des Born** bringen. Direkt 
 - **Smartcar**: VW-Integration Europa (Mai 2026) nur Laden/Batterie/km, kein Send Destination; Free-Plan ohne Befehle.
 - myCupra erscheint **nicht** im Teilen-Menü von Google Maps; die myCupra-Suche findet **keine Koordinaten und keine Plus Codes**, nur Adressen/Namen.
 
-Deshalb: **Google Maps → Teilen → Cupra-Ziel** → App zeigt eine Adresse → **„Kopieren & myCupra öffnen"** → in myCupra **Karte → Suche → Einfügen → An Fahrzeug senden**.
+Deshalb: **Google Maps → Teilen → Cupra-Ziel** → App zeigt eine Adresse → **„Kopieren & myCupra öffnen"** → myCupra öffnet auf der Karte → **Suche → Einfügen → An Fahrzeug senden**.
+
+Dazu (v0.2.0, Christof 19.10.2026): **Favoriten** als große Knöpfe ganz oben (im Auto ist das Navi dafür „schlecht gelöst und langsam"), **Verlauf** der letzten 10 geteilten Ziele mit ☆, **Schnellzugriffe** am App-Icon. Gleicher Baustein in `obitusde/ladeplanung` (App v0.32.0, „In My CUPRA öffnen" in den Stationsdetails).
 
 ## 3. Architektur
 
@@ -39,7 +41,9 @@ Google Maps (Teilen) ──text/url──► PWA (GitHub Pages, index.html, shar
 - Updates: Manifest `manifest.json?v=…`, Service Worker `sw.js?v=…` (SW holt mit `cache: 'no-cache'`). Bei jeder Version die `?v=` mit hochzählen. Das App-Schema `cupra://oauth-callback` stammt aus PyCupra. **Nie in den Play Store:** jede Methode hat `S.browser_fallback_url` → `./?zurueck=<Methode>`, die App zeigt dann einen Hinweis. A landete am 19.10.2026 bei Christof im Play Store (Chrome öffnet nur Activities mit BROWSABLE, der Launcher hat das meist nicht).
 - **Manifest-`id` muss `/cupra-ziel/` bleiben.** `"./"` wird vom Ursprung aus aufgelöst = `https://obitusde.github.io/` = id von Fotoschatz → Chrome meldete „bereits installiert", Öffnen scheiterte (19.10.2026).
 - Links ohne Koordinaten (Suchtext `q=…`, Plus Code, nur Name) sucht das Script über den Geocoder (v0.2.0); Plus Codes werden in eine Straßenadresse umgewandelt. Fehlerantworten enthalten `aufgeloest`.
-- Kein Schlüssel am Web-Dienst (Repo ist öffentlich; Dienst nimmt nur Maps-Links, gibt nur Kartendaten zurück).
+- Link auflösen ohne Schlüssel (nur Kartendaten). **Favoriten nur mit Schlüssel** (Adressen der Familie; Repo und Web-App-URL sind öffentlich): `doPost` mit Text-Körper `{aktion: pruefen|liste|speichern|loeschen, schluessel, fav?, id?}` (POST ohne Content-Type → keine CORS-Vorabprüfung; Schlüssel nie in der URL). Script Properties `SCHLUESSEL`, `FAVORITEN_SHEET_ID`, angelegt von **`einrichten()`** (im Editor ausführen, Log zeigt Schlüssel + Sheet-URL). Sheet „Cupra-Ziel Favoriten", Blatt `Favoriten`: `id | Name | Adresse | Lat | Lon | Reihenfolge | Angelegt`; „Adresse" = Text für die myCupra-Suche. Christof darf Zeilen von Hand anlegen (id leer → `z<Zeile>`), Reihenfolge leer = hinten. Schreiben mit `LockService`, Formel-Zeichen entschärft (`alsText_`).
+- App-Speicher (`localStorage`): `cupra-ziel.schluessel`, `.favoriten` (Zwischenspeicher der Liste, sofort sichtbar), `.verlauf` (10 Einträge, nur auf dem Handy), `.mitName`, `.methode2`.
+- **Schnellzugriffe** (Manifest `shortcuts`, lange aufs Icon drücken): `./?oeffne=map|map%2Fevroute|destsync|tourimport` → großer Knopf + ein direkter Versuch (Chrome blockiert das Öffnen einer anderen App ohne Tipp evtl.). Chrome übernimmt neue Shortcuts erst mit dem WebAPK-Update (bis ~1 Tag). Testknöpfe für dieselben Seiten unter „myCupra öffnen – Methode und Seiten testen". Rückkehr bei Fehlschlag `?zurueck=M-<Methode>` bzw. `S-<pfad>`. Methoden seit v0.2.0 nur noch K (Karte, Standard) und B (oauth-callback, Rückfall).
 
 ## 4. Zugänge
 
@@ -51,7 +55,7 @@ Google Maps (Teilen) ──text/url──► PWA (GitHub Pages, index.html, shar
 | Web-App | Deployment-ID `AKfycbwRpVeFUoUoVfjENhinhW9zfR5EjWWRk4Nx0zxRBpldBBA0YKf4f7Xl_YwDO-Vq1wsB` (`apps-script/deployment-id.txt`), URL `https://script.google.com/macros/s/<ID>/exec` · `?test=1` Diagnose mit 3 Testlinks · `?link=…` |
 | Secret `CLASPRC_JSON` | Inhalt von Christofs `~/.clasprc.json`, am 19.10.2026 per `gh secret set` gesetzt. **Nie ausgeben.** |
 
-Erste Freigabe (am 19.10.2026 erteilt, `testeLinks` lief): Nach dem ersten Deploy muss Christof einmal die Web-App-URL (bzw. im Editor `testeLinks`) öffnen und Google die Berechtigungen (externe Anfragen) erlauben.
+Erste Freigabe (am 19.10.2026 erteilt, `testeLinks` lief). **Neue Berechtigung ab v0.3.0 (Google Sheets):** bis Christof im Editor `einrichten` ausführt und zustimmt, antwortet die ganze Web-App ggf. mit „Autorisierung erforderlich" (auch das Auflösen). Jede neue Google-Berechtigung braucht wieder eine Zustimmung im Editor.
 
 ## 5. Routine
 
@@ -68,7 +72,8 @@ Veröffentlichen = committen und auf `main` pushen. Die Action läuft bei Änder
 1. ~~Web-App `?test=1`~~ 19.10.2026: Links 1+2 ok (Edmund-Weller-str. 2, 58675 Hemer, ~40 m), Link 3 „Keine Adresse" → v0.2.0, erneut prüfen.
 2. ✅ 19.10.2026 (v0.1.2): myCupra-Suche findet die kopierte Adresse.
 3. ✅ 19.10.2026: K (`cupra://map`) öffnet myCupra sofort auf der Karte.
-4. Erscheint Cupra-Ziel nach der Installation im Teilen-Menü von Google Maps, und was steht im geteilten Text (nur Link oder Name + Adresse + Link)?
+4. ✅ Cupra-Ziel erscheint im Teilen-Menü (19.10.2026).
+5. v0.2.0/0.3.0: `einrichten` im Editor, Schlüssel in der App, Favorit anlegen/antippen; Schnellzugriffe am Icon; was öffnen `/map/evroute`, `/destsync`, `/tourimport`, `/home`?
 
 ## 7. Hinweise für die Cloud-Sitzung
 
