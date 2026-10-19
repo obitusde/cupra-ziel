@@ -1,7 +1,7 @@
 {
   "name": "Cupra-Ziel",
   "short_name": "Cupra-Ziel",
-  "description": "Google-Maps-Ort teilen → Adresse kopieren → in myCupra einfügen und ans Auto senden. Mit Favoriten.",
+  "description": "Google-Maps-Ort teilen → ans Auto senden (über MacroDroid) oder Adresse kopieren und in myCupra einfügen. Mit Favoriten.",
   "lang": "de",
   "id": "/cupra-ziel/",
   "start_url": "./",
@@ -11,19 +11,46 @@
   "background_color": "#161616",
   "theme_color": "#161616",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "share_target": {
     "action": "./",
     "method": "GET",
-    "params": { "title": "title", "text": "text", "url": "url" }
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
   },
   "shortcuts": [
-    { "name": "myCupra: Karte", "short_name": "Karte", "url": "./?oeffne=map", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
-    { "name": "myCupra: Routenplaner", "short_name": "Routenplaner", "url": "./?oeffne=map%2Fevroute", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
-    { "name": "myCupra: Ziele (destsync)", "short_name": "Ziele", "url": "./?oeffne=destsync", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
-    { "name": "myCupra: Tour-Import", "short_name": "Tour-Import", "url": "./?oeffne=tourimport", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+    {
+      "name": "myCupra: Karte",
+      "short_name": "Karte",
+      "url": "./?oeffne=map",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }

@@ -1,11 +1,11 @@
 <!doctype html>
 <!--
   Cupra-Ziel — PWA
-  Version 0.2.0 (19.10.2026)
+  Version 0.3.0 (19.10.2026)
 
   Google Maps → Teilen → Cupra-Ziel. Die App schickt den geteilten Text an das Apps Script
-  (Web-Dienst), bekommt Adresse und Koordinaten zurück und bietet „Kopieren & myCupra öffnen".
-  myCupra öffnet direkt auf der Karte: Suche → Einfügen → An Fahrzeug senden.
+  (Web-Dienst), bekommt Adresse und Koordinaten zurück und bietet „Ans Auto senden" (über MacroDroid)
+  bzw. „Kopieren & myCupra öffnen" (myCupra öffnet auf der Karte: Suche → Einfügen → An Fahrzeug senden).
   Dazu Favoriten (Google Sheet über Apps Script, mit Schlüssel) und Verlauf (nur auf diesem Handy).
 
   Versionen:
@@ -20,6 +20,12 @@
            Startseite, bearbeiten/sortieren/löschen; Verlauf der letzten 10 Ziele mit ☆; Einstellungen
            mit Schlüssel; Schnellzugriffe am App-Icon und Testknöpfe für myCupra-Seiten (/map/evroute,
            /destsync, /tourimport); Methoden A und C entfernt (K klappt, B bleibt als Rückfall)
+    0.3.0  „Ans Auto senden" (Christof 19.10.2026): ruft den MacroDroid-Webhook …/cupra?ziel=<Text> auf, das Makro
+           (macrodroid/ im Repo) füllt myCupra aus und tippt „An das Fahrzeug senden". Webhook-Adresse nur in den
+           Einstellungen auf dem Handy (localStorage cupra-ziel.webhook, auch von der Ladeplanung gelesen).
+           Favoriten und Verlauf senden beim Antippen direkt; ohne Webhook oder ohne Netz wie bisher kopieren
+           und öffnen. Aufgeräumt: Schnellzugriffe und Testseiten außer „Karte" entfernt (öffneten nur die
+           Startseite von myCupra)
 -->
 <html lang="de">
 <head>
@@ -27,7 +33,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cupra-Ziel</title>
 <meta name="theme-color" content="#161616">
-<link rel="manifest" href="manifest.json?v=0.2.0">
+<link rel="manifest" href="manifest.json?v=0.3.0">
 <link rel="icon" href="icon-192.png">
 <style>
   :root {
@@ -53,6 +59,7 @@
   .gross { width: 100%; background: var(--kupfer); border-color: var(--kupfer-dunkel); color: #1b120c; font-weight: 700; font-size: 19px; padding: 16px; margin-bottom: 10px; }
   .breit { width: 100%; margin-bottom: 8px; }
   .zwei { display: flex; gap: 8px; } .zwei > * { flex: 1; }
+  .zwei .breit { padding: 12px 8px; }
   .zeile { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--rand); }
   .zeile:first-child { border-top: 0; }
   .zeile .t { flex: 1; word-break: break-word; }
@@ -76,7 +83,7 @@
   .methoden button.aktiv { border-color: var(--kupfer); }
   .schalter { display: flex; align-items: center; gap: 10px; font-size: 16px; color: var(--leise); margin: -4px 0 12px; }
   .schalter input { width: 22px; height: 22px; accent-color: var(--kupfer); }
-  #meldung { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #000; border: 1px solid var(--rand); padding: 10px 16px; border-radius: 999px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; text-align: center; }
+  #meldung { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #000; border: 1px solid var(--rand); padding: 10px 16px; border-radius: 18px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; text-align: center; }
   #meldung.zeigen { opacity: 1; }
   .lade { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--leise); border-top-color: transparent; border-radius: 50%; animation: drehen 0.8s linear infinite; vertical-align: -2px; margin-right: 8px; }
   @keyframes drehen { to { transform: rotate(360deg); } }
@@ -100,12 +107,13 @@
   <div class="haupt" id="ergHaupt"></div>
   <label class="schalter" id="schalterName" hidden><input type="checkbox" id="mitName"> Name mitkopieren</label>
   <div id="ergHinweis" class="hinweis" hidden></div>
+  <button class="gross" id="knopfSenden" hidden>Ans Auto senden</button>
   <button class="gross" id="knopfOeffnen">Kopieren &amp; myCupra öffnen</button>
   <div class="zwei">
     <button class="breit" id="knopfKopieren">Nur kopieren</button>
     <button class="breit" id="knopfFavorit">☆ Als Favorit</button>
   </div>
-  <p class="leise">In myCupra (öffnet auf der Karte): <b>Suche → Einfügen → An Fahrzeug senden</b></p>
+  <p class="leise" id="ergAnleitung"></p>
 </div>
 
 <!-- Favorit anlegen / bearbeiten -->
@@ -153,14 +161,18 @@
   <input type="password" id="schluessel" autocomplete="off" spellcheck="false">
   <button class="breit" id="schluesselSpeichern">Schlüssel speichern und prüfen</button>
   <div id="schluesselStatus" class="leise"></div>
+  <hr style="border:0;border-top:1px solid var(--rand);margin:16px 0">
+  <p class="leise"><b>Ans Auto senden</b> braucht MacroDroid mit dem Makro „Cupra" (<a href="https://github.com/obitusde/cupra-ziel/tree/main/macrodroid" target="_blank" rel="noopener">Anleitung</a>). Die Webhook-Adresse steht im Makro beim Auslöser und bleibt nur auf diesem Handy (gilt auch für die Ladeplanung).</p>
+  <label class="feld" for="webhook">MacroDroid-Webhook</label>
+  <input type="text" id="webhook" autocomplete="off" spellcheck="false" placeholder="https://trigger.macrodroid.com/…/cupra">
+  <button class="breit" id="webhookSpeichern">Webhook speichern</button>
+  <div id="webhookStatus" class="leise"></div>
 </details>
 
 <details class="karte" id="diagnose">
-  <summary>myCupra öffnen – Methode und Seiten testen</summary>
+  <summary>myCupra öffnen – Methode</summary>
   <p class="leise">So öffnet „Kopieren &amp; myCupra öffnen" die App (gemerkt wird die gewählte):</p>
   <div class="methoden" id="methoden"></div>
-  <p class="leise" style="margin-top:14px">Andere Seiten in myCupra (Test – was dahinter steckt, ist nicht bekannt):</p>
-  <div class="methoden" id="seiten"></div>
   <p class="leise" id="versionen"></p>
 </details>
 
@@ -168,7 +180,7 @@
 
 <script>
 'use strict';
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.3.0';
 const PAKET = 'com.cupra.mycupra';
 
 // myCupra nimmt cupra:/<route> an (DeepLinkManager, APK 2.15.0), z. B. cupra://map → Route /map.
@@ -180,12 +192,9 @@ const METHODEN = {
   K: { titel: 'K – direkt auf die Karte (cupra://map)', pfad: 'map' },
   B: { titel: 'B – App ohne bestimmte Seite (cupra://oauth-callback)', pfad: 'oauth-callback' },
 };
+// Andere Routen (/map/evroute, /destsync, /tourimport, /home) öffneten bei Christof nur die Startseite (19.10.2026).
 const SEITEN = {
   'map': { titel: 'Karte', kurz: 'Karte' },
-  'map/evroute': { titel: 'EV-Routenplaner (/map/evroute)', kurz: 'Routenplaner' },
-  'destsync': { titel: 'Ziele (/destsync)', kurz: 'Ziele' },
-  'tourimport': { titel: 'Tour-Import (/tourimport)', kurz: 'Tour-Import' },
-  'home': { titel: 'Startseite (/home)', kurz: 'Startseite' },
 };
 const STANDARD_METHODE = 'K';
 const SPEICHER = {
@@ -194,7 +203,11 @@ const SPEICHER = {
   schluessel: 'cupra-ziel.schluessel',
   favoriten: 'cupra-ziel.favoriten',     // Zwischenspeicher der Liste aus dem Sheet (sofort sichtbar, offline)
   verlauf: 'cupra-ziel.verlauf',
+  webhook: 'cupra-ziel.webhook',         // MacroDroid-Webhook (mit Geräte-ID) – nur hier, nie im Repo
 };
+// Gleiche Prüfung in der Ladeplanung (liest denselben Eintrag, gleicher Ursprung obitusde.github.io)
+const WEBHOOK_MUSTER = /^https:\/\/trigger\.macrodroid\.com\/[A-Za-z0-9-]+\/[A-Za-z0-9_-]+$/;
+const SENDEN_SPERRE_MS = 20000;          // gleicher Text innerhalb von 20 s → nicht zweimal senden
 const VERLAUF_MAX = 10;
 
 const $ = id => document.getElementById(id);
@@ -206,10 +219,16 @@ function liesJson(k, rueckfall) { try { const v = JSON.parse(lies(k)); return v 
 function methode() { const m = lies(SPEICHER.methode); return METHODEN[m] ? m : STANDARD_METHODE; }
 function mitName() { return lies(SPEICHER.mitName) !== '0'; }
 function schluessel() { return (lies(SPEICHER.schluessel) || '').trim(); }
+function webhook() { const w = (lies(SPEICHER.webhook) || '').trim(); return WEBHOOK_MUSTER.test(w) ? w : ''; }
+/** Eingabe säubern: Abfrage (?ziel=…) und Schrägstrich am Ende weg. */
+function bereinigeWebhook(t) {
+  t = String(t || '').trim();
+  try { const u = new URL(t); return u.origin + u.pathname.replace(/\/+$/, ''); } catch (e) { return t; }
+}
 
-function melde(text) {
+function melde(text, ms) {
   const m = $('meldung'); m.textContent = text; m.classList.add('zeigen');
-  clearTimeout(melde.t); melde.t = setTimeout(() => m.classList.remove('zeigen'), 2000);
+  clearTimeout(melde.t); melde.t = setTimeout(() => m.classList.remove('zeigen'), ms || 2000);
 }
 function status(html, art) {
   const s = $('status'); s.hidden = !html; s.className = 'karte' + (art ? ' ' + art : ''); s.innerHTML = html || '';
@@ -232,6 +251,39 @@ function oeffneMyCupra(m) { const k = m || methode(); oeffneSeite(METHODEN[k].pf
 async function kopiereUndOeffne(text) {
   if (await kopiere(text)) { melde('Kopiert – myCupra wird geöffnet'); setTimeout(() => oeffneMyCupra(), 250); }
   else melde('Kopieren nicht möglich');
+}
+
+/**
+ * Ans Auto senden über MacroDroid: Webhook …/cupra?ziel=<Text>. Das Makro öffnet myCupra, fügt den Text ein,
+ * tippt den ersten Treffer und „An das Fahrzeug senden". Der Webhook liefert keinen CORS-Kopf → no-cors,
+ * die Antwort ist nicht lesbar; ob es geklappt hat, zeigt MacroDroid („Ziel gesendet"). Ohne Webhook
+ * oder ohne Netz: wie bisher kopieren und myCupra öffnen.
+ */
+let letzterVersand = { text: '', zeit: 0 };
+async function sendeAnsAuto(text) {
+  const w = webhook();
+  if (!w) return kopiereUndOeffne(text);
+  if (letzterVersand.text === text && Date.now() - letzterVersand.zeit < SENDEN_SPERRE_MS) { melde('Wird schon gesendet …'); return; }
+  letzterVersand = { text: text, zeit: Date.now() };
+  melde('Wird ans Auto gesendet …', 6000);
+  try {
+    await fetch(w + '?ziel=' + encodeURIComponent(text), { mode: 'no-cors', cache: 'no-store' });
+    melde('An MacroDroid geschickt – myCupra öffnet gleich. Handy entsperrt lassen.', 6000);
+  } catch (fehler) {
+    letzterVersand.zeit = 0;
+    melde('Nicht gesendet (kein Netz?) – Adresse wird kopiert', 3000);
+    setTimeout(() => kopiereUndOeffne(text), 1500);
+  }
+}
+
+/** Knöpfe und Texte je nachdem, ob ein Webhook eingetragen ist. */
+function zeigeSendeart() {
+  const direkt = !!webhook();
+  $('knopfSenden').hidden = !direkt;
+  $('knopfOeffnen').className = direkt ? 'breit' : 'gross';
+  $('ergAnleitung').innerHTML = direkt
+    ? '„Ans Auto senden": MacroDroid füllt myCupra aus und sendet – Handy entsperrt und hochkant lassen.'
+    : 'In myCupra (öffnet auf der Karte): <b>Suche → Einfügen → An Fahrzeug senden</b>';
 }
 
 // ---------- Apps-Script-Dienst ----------
@@ -368,7 +420,7 @@ function zeigeVerlauf() {
     const zeile = el('div', 'favzeile');
     const k = el('button', 'fav');
     k.append(el('b', '', v.name || v.text), el('span', '', (v.name ? v.text + ' · ' : '') + zeitText(v.zeit)));
-    k.onclick = () => kopiereUndOeffne(v.text);
+    k.onclick = () => sendeAnsAuto(v.text);
     const stern = el('button', 'klein', '☆');
     stern.title = 'Als Favorit speichern';
     stern.onclick = () => oeffneFavForm({ name: v.name, adresse: v.text, lat: v.lat, lon: v.lon });
@@ -389,12 +441,13 @@ function zeigeFavoriten() {
     $('favHinweis').innerHTML = 'Noch nicht eingerichtet: Schlüssel unter <b>Einstellungen</b> eintragen.';
     return;
   }
-  $('favHinweis').textContent = favoriten.length ? '' : 'Noch keine Favoriten. Nach dem Teilen „☆ Als Favorit" tippen.';
+  $('favHinweis').textContent = !favoriten.length ? 'Noch keine Favoriten. Nach dem Teilen „☆ Als Favorit" tippen.'
+    : bearbeiten ? '' : webhook() ? 'Antippen = direkt ans Auto senden.' : 'Antippen = kopieren und myCupra öffnen.';
   favoriten.forEach((f, i) => {
     const zeile = el('div', 'favzeile');
     const k = el('button', 'fav');
     k.append(el('b', '', f.name), el('span', '', f.adresse));
-    k.onclick = () => bearbeiten ? oeffneFavForm(f) : kopiereUndOeffne(f.adresse);
+    k.onclick = () => bearbeiten ? oeffneFavForm(f) : sendeAnsAuto(f.adresse);
     zeile.append(k);
     if (bearbeiten) {
       const hoch = el('button', 'klein', '↑'); hoch.disabled = i === 0; hoch.title = 'Nach oben';
@@ -475,7 +528,19 @@ async function speichereSchluessel() {
   } catch (fehler) { $('schluesselStatus').textContent = '✕ ' + fehler.message; zeigeFavoriten(); }
 }
 
-// ---------- Methoden und Seiten (Test) ----------
+function speichereWebhook() {
+  const w = bereinigeWebhook($('webhook').value);
+  $('webhook').value = w;
+  if (w && !WEBHOOK_MUSTER.test(w)) {
+    $('webhookStatus').textContent = '✕ Sieht nicht aus wie https://trigger.macrodroid.com/<Geräte-ID>/cupra';
+    return;
+  }
+  schreib(SPEICHER.webhook, w);
+  $('webhookStatus').textContent = w ? '✓ Gespeichert. Favoriten und „Ans Auto senden" gehen jetzt über MacroDroid.' : 'Entfernt – wieder kopieren und öffnen.';
+  zeigeSendeart(); zeigeFavoriten();
+}
+
+// ---------- Methoden ----------
 function baueMethoden() {
   const box = $('methoden'); box.replaceChildren();
   Object.keys(METHODEN).forEach(m => {
@@ -483,15 +548,10 @@ function baueMethoden() {
     b.onclick = () => { schreib(SPEICHER.methode, m); baueMethoden(); oeffneMyCupra(m); };
     box.append(b);
   });
-  const seiten = $('seiten'); seiten.replaceChildren();
-  Object.keys(SEITEN).filter(p => p !== 'map').forEach(p => {
-    const b = el('button', '', SEITEN[p].titel);
-    b.onclick = () => oeffneSeite(p, 'S-' + p);
-    seiten.append(b);
-  });
 }
 
 // ---------- Knöpfe ----------
+$('knopfSenden').onclick = () => sendeAnsAuto(hauptText);
 $('knopfOeffnen').onclick = () => kopiereUndOeffne(hauptText);
 $('knopfKopieren').onclick = async () => { if (await kopiere(hauptText)) melde('Kopiert'); };
 $('knopfFavorit').onclick = () => oeffneFavForm({ name: hauptName, adresse: hauptText,
@@ -502,12 +562,15 @@ $('favAbbrechen').onclick = () => { $('favForm').hidden = true; };
 $('favBearbeiten').onclick = () => { bearbeiten = !bearbeiten; zeigeFavoriten(); };
 $('verlaufLeeren').onclick = () => { schreib(SPEICHER.verlauf, '[]'); zeigeVerlauf(); };
 $('schluesselSpeichern').onclick = speichereSchluessel;
+$('webhookSpeichern').onclick = speichereWebhook;
 $('mitName').onchange = e => { schreib(SPEICHER.mitName, e.target.checked ? '1' : '0'); if (letztesErgebnis) zeigeErgebnis(letztesErgebnis.j, letztesErgebnis.geteilteZeilen); };
 
 // ---------- Start ----------
 $('kopfVersion').textContent = 'v' + APP_VERSION;
 $('versionen').textContent = 'App v' + APP_VERSION;
 $('schluessel').value = schluessel();
+$('webhook').value = lies(SPEICHER.webhook) || '';
+zeigeSendeart();
 baueMethoden();
 zeigeFavoriten();
 zeigeVerlauf();
@@ -524,7 +587,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=1.1.
     const was = zurueckVon.startsWith('M-') ? 'Methode ' + zurueckVon.slice(2)
       : 'Die myCupra-Seite „' + ((SEITEN[zurueckVon.replace(/^S-/, '')] || {}).titel || zurueckVon) + '"';
     status(esc(was) + ' ließ sich nicht öffnen. Kamst du über „Kopieren &amp; myCupra öffnen", ist die Adresse schon kopiert – ' +
-      'öffne myCupra selbst oder probiere unten etwas anderes.', 'hinweis fehler');
+      'öffne myCupra selbst oder probiere unten die andere Methode.', 'hinweis fehler');
     $('diagnose').open = true;
   }
 
@@ -548,7 +611,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=1.1.
   ladeFavoriten();
 })();
 
-window.cupraZiel = { zeilenAusTeilen, verarbeite, METHODEN, SEITEN, myCupraUrl, APP_VERSION, get favoriten() { return favoriten; } };
+window.cupraZiel = { zeilenAusTeilen, verarbeite, sendeAnsAuto, bereinigeWebhook, WEBHOOK_MUSTER, METHODEN, SEITEN, myCupraUrl, APP_VERSION, get favoriten() { return favoriten; } };
 </script>
 </body>
 </html>

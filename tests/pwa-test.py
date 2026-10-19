@@ -1,6 +1,8 @@
-# PWA-Test mit Playwright (Python) und nachgebautem Apps-Script-Dienst. Version 0.3.0 (19.10.2026)
+# PWA-Test mit Playwright (Python) und nachgebautem Apps-Script-Dienst. Version 0.4.0 (19.10.2026)
 # 0.2.0: Name mitkopieren, Methode K, Version im Kopf, Service Worker
 # 0.3.0: Favoriten (POST liste/speichern/loeschen/pruefen), Verlauf, Schnellzugriff ?oeffne=, Rückkehr ?zurueck=
+# 0.4.0: „Ans Auto senden" über den MacroDroid-Webhook (nachgebaut), Doppeltipp-Sperre, kein Netz → kopieren;
+#        Schnellzugriff nur noch Karte
 # Aufruf: python3 tests/pwa-test.py . <ordner-fuer-screenshots>
 import json, sys, threading, http.server, functools
 from urllib.parse import quote, urlparse, parse_qs
@@ -51,6 +53,8 @@ with sync_playwright() as p:
     ctx.route("https://dienst.test/**", dienst)
     navigiert = []
     ctx.route("intent://**", lambda r: (navigiert.append(r.request.url), r.abort()))
+    webhooks = []
+    ctx.route("https://trigger.macrodroid.com/**", lambda r: (webhooks.append(r.request.url), r.fulfill(status=200, body="ok")))
     pg = ctx.new_page(); logs = []
     pg.on("pageerror", lambda e: logs.append("PAGEERROR " + str(e)))
 
@@ -88,14 +92,40 @@ with sync_playwright() as p:
 
     # 6. Schnellzugriff + Rückkehr
     navigiert.clear()
-    pg.goto("http://127.0.0.1:8765/" + D + "&oeffne=" + quote("map/evroute")); pg.wait_for_timeout(500)
+    pg.goto("http://127.0.0.1:8765/" + D + "&oeffne=map"); pg.wait_for_timeout(500)
     print("Schnellzugriff:", pg.inner_text("#knopfSchnell"), "| automatisch geöffnet:", navigiert[-1][:50] if navigiert else "-")
-    pg.goto("http://127.0.0.1:8765/" + D + "&zurueck=" + quote("S-destsync")); pg.wait_for_timeout(300)
+    pg.goto("http://127.0.0.1:8765/" + D + "&zurueck=" + quote("S-map")); pg.wait_for_timeout(300)
     print("Rückkehr:", pg.inner_text("#status")[:80])
     pg.goto("http://127.0.0.1:8765/" + D + "&zurueck=M-K"); pg.wait_for_timeout(300)
     print("Rückkehr K:", pg.inner_text("#status")[:40])
 
-    # 7. Fehlerfall, Manifest
+    # 7. Ans Auto senden (Webhook)
+    print("Ohne Webhook – Senden-Knopf versteckt:", pg.is_hidden("#knopfSenden"))
+    pg.click("#einstellungen summary")
+    pg.fill("#webhook", "https://example.com/x"); pg.click("#webhookSpeichern")
+    print("Falscher Webhook:", pg.inner_text("#webhookStatus"))
+    pg.fill("#webhook", " https://trigger.macrodroid.com/abc-123/cupra?ziel=alt "); pg.click("#webhookSpeichern")
+    print("Webhook bereinigt:", pg.input_value("#webhook"), "|", pg.inner_text("#webhookStatus")[:40])
+    pg.goto("http://127.0.0.1:8765/" + D + "&text=" + quote(text))
+    pg.wait_for_selector("#ergebnis:not([hidden])", timeout=5000)
+    navigiert.clear()
+    print("Senden-Knopf sichtbar:", pg.is_visible("#knopfSenden"), "| Öffnen-Knopf Klasse:", pg.get_attribute("#knopfOeffnen", "class"))
+    pg.click("#knopfSenden"); pg.wait_for_timeout(400)
+    pg.click("#knopfSenden"); pg.wait_for_timeout(400)
+    print("Webhook-Aufrufe (Doppeltipp → 1):", len(webhooks), "|", webhooks[-1] if webhooks else "-")
+    print("Meldung:", pg.inner_text("#meldung"), "| kein Intent:", not navigiert)
+    pg.reload(); pg.wait_for_timeout(500)                     # Sperre gilt 20 s im Speicher der Seite
+    pg.click("#favListe .fav >> nth=0"); pg.wait_for_timeout(400)
+    print("Favorit sendet:", webhooks[-1].split("?ziel=")[1] if len(webhooks) > 1 else "-", "|", pg.inner_text("#favHinweis"))
+    # kein Netz zum Webhook → kopieren und öffnen
+    ctx.unroute("https://trigger.macrodroid.com/**")
+    ctx.route("https://trigger.macrodroid.com/**", lambda r: r.abort())
+    pg.evaluate("window.cupraZiel.sendeAnsAuto('Teststraße 1, 1000 Lausanne')"); pg.wait_for_timeout(2200)
+    print("Ohne Netz → Zwischenablage:", pg.evaluate("navigator.clipboard.readText()"), "| Intent:", navigiert[-1][:30] if navigiert else "-")
+    pg.click("#einstellungen summary"); pg.fill("#webhook", ""); pg.click("#webhookSpeichern")
+    print("Webhook entfernt:", pg.inner_text("#webhookStatus"), "| Senden versteckt:", pg.is_hidden("#knopfSenden"))
+
+    # 8. Fehlerfall, Manifest
     pg2 = ctx.new_page()
     pg2.route("https://dienst.test/**", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps({"ok": False, "fehler": "Kein Google-Maps-Link gefunden"})))
     pg2.goto("http://127.0.0.1:8765/" + D + "&text=" + quote("nur Text")); pg2.wait_for_timeout(600)
