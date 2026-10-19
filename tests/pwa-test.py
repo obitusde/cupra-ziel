@@ -1,4 +1,5 @@
-# PWA-Test mit Playwright (Python) und nachgebautem Apps-Script-Dienst. Version 0.1.0 (19.10.2026)
+# PWA-Test mit Playwright (Python) und nachgebautem Apps-Script-Dienst. Version 0.2.0 (19.10.2026)
+# 0.2.0: Name mitkopieren, Methode K, Version im Kopf, Service Worker
 # Aufruf: python3 tests/pwa-test.py . <ordner-fuer-screenshots>
 import json, sys, threading, http.server, functools
 from playwright.sync_api import sync_playwright
@@ -36,6 +37,16 @@ with sync_playwright() as p:
     pg.click("#knopfKopieren")
     pg.wait_for_timeout(300)
     print("Zwischenablage:", pg.evaluate("navigator.clipboard.readText()"))
+    print("Kopf-Version:", pg.inner_text("#kopfVersion"), "| Schalter sichtbar:", pg.is_visible("#schalterName"))
+    pg.uncheck("#mitName"); pg.wait_for_timeout(200)
+    print("Ohne Name:", pg.inner_text("#ergHaupt"))
+    pg.check("#mitName"); pg.wait_for_timeout(200)
+    print("Mit Name:", pg.inner_text("#ergHaupt"))
+    print("Methode K:", pg.evaluate("cupraZiel.METHODEN.K.url"))
+    pg.wait_for_timeout(500)
+    print("Service Worker aktiv:", pg.evaluate("navigator.serviceWorker.controller ? 'ja' : 'nein (erst nach Neuladen)'"))
+    pg.reload(); pg.wait_for_timeout(800)
+    print("Nach Neuladen (über SW):", pg.evaluate("navigator.serviceWorker.controller ? 'SW steuert' : 'kein SW'"), "| Titel:", pg.title())
     # Manifest + Fehlerfall
     print("Manifest share_target:", json.load(open(root + "/manifest.json"))["share_target"])
     pg2 = ctx.new_page()

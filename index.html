@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
   Cupra-Ziel — PWA
-  Version 0.1.1 (19.10.2026)
+  Version 0.1.2 (19.10.2026)
 
   Google Maps → Teilen → Cupra-Ziel. Die App schickt den geteilten Text an das Apps Script
   (Web-Dienst), bekommt Adresse und Koordinaten zurück und bietet „Kopieren & myCupra öffnen".
@@ -14,6 +14,9 @@
            myCupra öffnen nie mehr über den Play Store: jede Methode hat browser_fallback_url zurück
            in die App (?zurueck=X) mit Hinweis; Standard jetzt B (cupra://oauth-callback), weil A
            bei Christof im Play Store landete
+    0.1.2  Standard-Methode K: myCupra direkt auf der Karte (cupra://map – Route /map aus der APK 2.15.0,
+           DeepLinkManager nimmt cupra:/<pfad>); POI-Name vor die Adresse (Schalter „Name mitkopieren",
+           gemerkt); Version oben sichtbar; Manifest und Service Worker mit ?v=, damit Updates ankommen
 -->
 <html lang="de">
 <head>
@@ -21,7 +24,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cupra-Ziel</title>
 <meta name="theme-color" content="#161616">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json?v=0.1.2">
 <link rel="icon" href="icon-192.png">
 <style>
   :root {
@@ -58,21 +61,25 @@
   #meldung.zeigen { opacity: 1; }
   .lade { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--leise); border-top-color: transparent; border-radius: 50%; animation: drehen 0.8s linear infinite; vertical-align: -2px; margin-right: 8px; }
   @keyframes drehen { to { transform: rotate(360deg); } }
+  .schalter { display: flex; align-items: center; gap: 10px; font-size: 16px; color: var(--leise); margin: -4px 0 12px; }
+  .schalter input { width: 22px; height: 22px; accent-color: var(--kupfer); }
+  h1 .version { font-size: 13px; font-weight: 400; color: var(--leise); margin-left: auto; }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
-<h1><img src="icon-192.png" alt="">Cupra-Ziel</h1>
+<h1><img src="icon-192.png" alt="">Cupra-Ziel<span class="version" id="kopfVersion"></span></h1>
 
 <div id="status" class="karte" hidden></div>
 
 <div id="ergebnis" class="karte" hidden>
   <div class="name" id="ergName"></div>
   <div class="haupt" id="ergHaupt"></div>
+  <label class="schalter" id="schalterName" hidden><input type="checkbox" id="mitName"> Name mitkopieren</label>
   <div id="ergHinweis" class="hinweis" hidden></div>
   <button class="gross" id="knopfOeffnen">Kopieren &amp; myCupra öffnen</button>
   <button class="breit" id="knopfKopieren">Nur kopieren</button>
-  <p class="leise">In myCupra: <b>Karte → Suche → Einfügen → An Fahrzeug senden</b></p>
+  <p class="leise">In myCupra (öffnet auf der Karte): <b>Suche → Einfügen → An Fahrzeug senden</b></p>
 </div>
 
 <div id="weitere" class="karte" hidden>
@@ -98,18 +105,19 @@
 
 <script>
 'use strict';
-const APP_VERSION = '0.1.1';
+const APP_VERSION = '0.1.2';
 const PAKET = 'com.cupra.mycupra';
 // Klappt ein Intent nicht, öffnet Chrome sonst den Play Store. Mit S.browser_fallback_url geht es
 // stattdessen zurück in diese App (?zurueck=<Methode>), die dann einen Hinweis zeigt.
 const zurueck = m => 'S.browser_fallback_url=' + encodeURIComponent(new URL('./?zurueck=' + m, location.href).href);
 const METHODEN = {
+  K: { titel: 'K – direkt auf die Karte (cupra://map)', url: 'intent://map#Intent;scheme=cupra;package=' + PAKET + ';' + zurueck('K') + ';end' },
   A: { titel: 'A – App-Start (Launcher)', url: 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=' + PAKET + ';' + zurueck('A') + ';end' },
   B: { titel: 'B – App-Adresse cupra://oauth-callback', url: 'intent://oauth-callback#Intent;scheme=cupra;package=' + PAKET + ';' + zurueck('B') + ';end' },
   C: { titel: 'C – App-Adresse cupra:// (ohne Paket)', url: 'intent://oauth-callback#Intent;scheme=cupra;' + zurueck('C') + ';end' },
 };
-const STANDARD_METHODE = 'B';
-const SPEICHER_METHODE = 'cupra-ziel.methode';
+const STANDARD_METHODE = 'K';
+const SPEICHER_METHODE = 'cupra-ziel.methode2';   // neuer Schlüssel ab 0.1.2 → alle starten mit K
 
 const $ = id => document.getElementById(id);
 let aktuellerText = '';
@@ -165,7 +173,19 @@ function zeilenAusTeilen(text) {
 
 // ---------- Anzeige ----------
 let hauptText = '';
+let letztesErgebnis = null;
+const SPEICHER_MIT_NAME = 'cupra-ziel.mitName';
+function mitName() { return lies(SPEICHER_MIT_NAME) !== '0'; }   // Standard: Name mitkopieren
+function istPlusCode(t) { return /(^|\s)[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}(\s|,|$)/i.test(t); }
+/** POI-Name, wenn es einer ist (keine Adresse, kein Plus Code, keine Koordinate). */
+function poiName(j, geteilteZeilen, adresse) {
+  const kandidaten = [j.name].concat(geteilteZeilen);
+  return kandidaten.find(n => n && n !== adresse && !/\b\d{4,5}\b/.test(n) && !/^\d/.test(n) && !istPlusCode(n)
+    && n !== 'Nur aus dem Teilen-Text') || '';
+}
+
 function zeigeErgebnis(j, geteilteZeilen) {
+  letztesErgebnis = { j, geteilteZeilen };
   const varianten = (j.varianten || []).slice();
   // Adresse aus dem Teilen-Text (Google Maps schickt sie bei echten Orten mit) ist genauer als die
   // nächstgelegene Adresse aus der Rückwärts-Suche → nach vorne, dann gilt kein Abstands-Hinweis.
@@ -181,8 +201,16 @@ function zeigeErgebnis(j, geteilteZeilen) {
   geteilteZeilen.forEach(z => { if (!varianten.some(v => v.text === z)) varianten.push({ art: 'Aus dem Teilen-Text', text: z }); });
   if (!varianten.length) { status('Keine Adresse gefunden.', 'hinweis fehler'); return; }
 
+  // POI-Name vor die Adresse setzen (Schalter „Name mitkopieren"), die reine Adresse bleibt als Reserve
+  const name = poiName(j, geteilteZeilen, varianten[0].text);
+  $('schalterName').hidden = !name;
+  $('mitName').checked = mitName();
+  if (name && mitName() && varianten[0].text.indexOf(name) < 0) {
+    varianten.unshift({ art: 'Name + Adresse', text: name + ', ' + varianten[0].text });
+  }
+
   hauptText = varianten[0].text;
-  $('ergName').textContent = j.name || varianten[0].art;
+  $('ergName').textContent = name || j.name || varianten[0].art;
   $('ergHaupt').textContent = hauptText;
   const h = $('ergHinweis');
   if (!ausTeilen && j.abstandM !== null && j.abstandM > 60) {
@@ -247,7 +275,9 @@ function baueMethoden() {
 // ---------- Start ----------
 baueMethoden();
 $('versionen').textContent = 'App v' + APP_VERSION;
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+$('kopfVersion').textContent = 'v' + APP_VERSION;
+$('mitName').onchange = e => { schreib(SPEICHER_MIT_NAME, e.target.checked ? '1' : '0'); if (letztesErgebnis) zeigeErgebnis(letztesErgebnis.j, letztesErgebnis.geteilteZeilen); };
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=1.1.0').catch(() => {});
 
 (function start() {
   const p = new URLSearchParams(location.search);

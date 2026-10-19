@@ -1,6 +1,6 @@
 # Cupra-Ziel — Projektstand für Claude
 
-**Stand 19.10.2026** · App (`index.html`) v0.1.1 · Apps Script (`apps-script/Code.js`) v0.2.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.0.0
+**Stand 19.10.2026** · App (`index.html`) v0.1.2 · Apps Script (`apps-script/Code.js`) v0.2.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.1.0
 
 ## 1. Nutzer und Arbeitsweise (unbedingt beachten)
 
@@ -33,7 +33,10 @@ Google Maps (Teilen) ──text/url──► PWA (GitHub Pages, index.html, shar
 ```
 - Die PWA liest die Web-App-Adresse aus `apps-script/deployment-id.txt` (vom ersten Action-Lauf angelegt). Für Tests: `?dienst=<URL>`.
 - Enthält der Teilen-Text eine Adresszeile (mit PLZ), hat sie Vorrang vor der Rückwärts-Suche.
-- myCupra öffnen: Paket **`com.cupra.mycupra`** (Play Store geprüft). Drei Methoden zum Testen (A Launcher-Intent mit Paket, B `cupra://oauth-callback` mit Paket = Standard, C `cupra://oauth-callback` ohne Paket); die gewählte steht in `localStorage['cupra-ziel.methode']`. Das App-Schema `cupra://oauth-callback` stammt aus PyCupra. **Nie in den Play Store:** jede Methode hat `S.browser_fallback_url` → `./?zurueck=<Methode>`, die App zeigt dann einen Hinweis. A landete am 19.10.2026 bei Christof im Play Store (Chrome öffnet nur Activities mit BROWSABLE, der Launcher hat das meist nicht).
+- myCupra öffnen: Paket **`com.cupra.mycupra`** (Play Store geprüft). Methoden: **K `cupra://map` = Standard (direkt Karte)**, A Launcher-Intent mit Paket, B `cupra://oauth-callback` mit Paket (am 19.10.2026 bei Christof ok), C wie B ohne Paket; die gewählte steht in `localStorage['cupra-ziel.methode2']`.
+- **myCupra-Deep-Links (APK 2.15.0 untersucht, 19.10.2026):** `es.seat.ola.app.MainActivity` nimmt `cupra://…` und `https://www.cupraofficial.com/mobile/…` (autoVerify). DeepLinkManager: Präfix `cupra:/` entfernen, Rest muss mit genau einem `/` beginnen → interne Route; nur `?navigation=modal` wird ausgewertet, **keine weiteren Parameter** (Adresse lässt sich nicht vorbelegen). Bekannte Routen u. a. `/map`, `/map/evroute`, `/destsync`, `/tourimport`, `/home`, `/splash`. Weitere Schemata: `cupra://enrollment-completed`, `cupra://parkandpay-success`.
+- POI-Name: Schalter „Name mitkopieren" (Standard an, `localStorage['cupra-ziel.mitName']`) setzt „Name, Adresse" als Hauptvariante; Name = `name` aus dem Script oder erste Teilen-Zeile ohne PLZ/Plus Code.
+- Updates: Manifest `manifest.json?v=…`, Service Worker `sw.js?v=…` (SW holt mit `cache: 'no-cache'`). Bei jeder Version die `?v=` mit hochzählen. Das App-Schema `cupra://oauth-callback` stammt aus PyCupra. **Nie in den Play Store:** jede Methode hat `S.browser_fallback_url` → `./?zurueck=<Methode>`, die App zeigt dann einen Hinweis. A landete am 19.10.2026 bei Christof im Play Store (Chrome öffnet nur Activities mit BROWSABLE, der Launcher hat das meist nicht).
 - **Manifest-`id` muss `/cupra-ziel/` bleiben.** `"./"` wird vom Ursprung aus aufgelöst = `https://obitusde.github.io/` = id von Fotoschatz → Chrome meldete „bereits installiert", Öffnen scheiterte (19.10.2026).
 - Links ohne Koordinaten (Suchtext `q=…`, Plus Code, nur Name) sucht das Script über den Geocoder (v0.2.0); Plus Codes werden in eine Straßenadresse umgewandelt. Fehlerantworten enthalten `aufgeloest`.
 - Kein Schlüssel am Web-Dienst (Repo ist öffentlich; Dienst nimmt nur Maps-Links, gibt nur Kartendaten zurück).
@@ -63,8 +66,8 @@ Veröffentlichen = committen und auf `main` pushen. Die Action läuft bei Änder
 ## 6. Offene Tests (Christof, Pixel)
 
 1. ~~Web-App `?test=1`~~ 19.10.2026: Links 1+2 ok (Edmund-Weller-str. 2, 58675 Hemer, ~40 m), Link 3 „Keine Adresse" → v0.2.0, erneut prüfen.
-2. Welche Variante findet die myCupra-Suche (Adresse ohne Land / mit Land / Name + Ort)?
-3. Welche Öffnen-Methode (A/B/C) startet myCupra sauber?
+2. Welche Variante findet die myCupra-Suche (Name + Adresse / Adresse ohne Land / mit Land)? 19.10.2026: Adresse funktioniert ("sonst klappt alles"); Name + Adresse offen.
+3. Öffnen: B klappte am 19.10.2026; K (`cupra://map`) ab v0.1.2 offen.
 4. Erscheint Cupra-Ziel nach der Installation im Teilen-Menü von Google Maps, und was steht im geteilten Text (nur Link oder Name + Adresse + Link)?
 
 ## 7. Hinweise für die Cloud-Sitzung
