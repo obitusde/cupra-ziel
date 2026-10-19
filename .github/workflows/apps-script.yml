@@ -1,0 +1,130 @@
+# Apps Script anlegen und veröffentlichen — Version 1.0.0 (19.10.2026)
+#
+# Läuft bei jedem Push auf main, der etwas unter apps-script/, tests/ oder an dieser Datei ändert,
+# und auf Knopfdruck (Actions → „Apps Script veröffentlichen" → „Run workflow").
+#
+# Erster Lauf (noch kein apps-script/.clasp.json bzw. apps-script/deployment-id.txt):
+#   legt das Apps-Script-Projekt „Cupra-Ziel" in Christofs Google-Konto an, erstellt die
+#   Web-App-Bereitstellung und committet scriptId und Deployment-ID ins Repo.
+# Danach: Tests → clasp push → clasp deploy auf die feste Deployment-ID (URL bleibt gleich).
+#
+# Zugang: Secret CLASPRC_JSON = Inhalt von ~/.clasprc.json (clasp-Login von Christofs Google-Konto).
+
+name: Apps Script veröffentlichen
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps-script/Code.js'
+      - 'apps-script/appsscript.json'
+      - 'tests/**'
+      - '.github/workflows/apps-script.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: apps-script-deploy
+  cancel-in-progress: false
+
+env:
+  CLASP_VERSION: 3.4.1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Repo auschecken
+        uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax prüfen und Tests
+        run: |
+          set -e
+          node --check apps-script/Code.js
+          for t in tests/test-*.js; do
+            echo "::group::$t"
+            node "$t"
+            echo "::endgroup::"
+          done
+
+      - name: clasp installieren und anmelden
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          set -e
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "::error::Secret CLASPRC_JSON fehlt (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          npm install -g "@google/clasp@${CLASP_VERSION}"
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          chmod 600 "$HOME/.clasprc.json"
+          clasp show-authorized-user
+
+      - name: Apps-Script-Projekt anlegen (nur beim ersten Lauf)
+        run: |
+          set -e
+          if [ -f apps-script/.clasp.json ]; then
+            echo "Projekt existiert schon: $(sed -n 's/.*"scriptId": *"\([^"]*\)".*/\1/p' apps-script/.clasp.json)"
+            exit 0
+          fi
+          NEU=$(mktemp -d)
+          ( cd "$NEU" && clasp --json create-script --type standalone --title "Cupra-Ziel" > ergebnis.json )
+          cat "$NEU/ergebnis.json"
+          SCRIPT_ID=$(node -e "console.log(require('$NEU/ergebnis.json').scriptId)")
+          if [ -z "$SCRIPT_ID" ] || [ "$SCRIPT_ID" = "undefined" ]; then
+            echo "::error::Keine scriptId erhalten."; exit 1
+          fi
+          printf '{\n  "scriptId": "%s",\n  "rootDir": ""\n}\n' "$SCRIPT_ID" > apps-script/.clasp.json
+          echo "NEU_ANGELEGT=1" >> "$GITHUB_ENV"
+          echo "Neues Projekt: https://script.google.com/d/${SCRIPT_ID}/edit" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: clasp push
+        working-directory: apps-script
+        run: clasp push -f
+
+      - name: clasp deploy (feste Deployment-ID, beim ersten Lauf neu)
+        working-directory: apps-script
+        run: |
+          set -e
+          VERSION=$(sed -n "s/^const VERSION = '\([^']*\)';.*/\1/p" Code.js)
+          BETREFF=$(git log -1 --format=%s | cut -c1-80)
+          if [ -s deployment-id.txt ]; then
+            clasp deploy -i "$(tr -d '[:space:]' < deployment-id.txt)" -d "v${VERSION}: ${BETREFF}"
+          else
+            clasp --json create-deployment -d "v${VERSION}: ${BETREFF}" > /tmp/deploy.json
+            cat /tmp/deploy.json
+            node -e "const d=require('/tmp/deploy.json'); if(!d.deploymentId) process.exit(1); console.log(d.deploymentId)" > deployment-id.txt
+            echo "NEU_DEPLOYMENT=1" >> "$GITHUB_ENV"
+          fi
+          ID=$(tr -d '[:space:]' < deployment-id.txt)
+          echo "### Apps Script v${VERSION} veröffentlicht" >> "$GITHUB_STEP_SUMMARY"
+          echo "Web-App: https://script.google.com/macros/s/${ID}/exec" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: scriptId und Deployment-ID ins Repo (nur beim ersten Lauf)
+        if: env.NEU_ANGELEGT == '1' || env.NEU_DEPLOYMENT == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps-script/.clasp.json apps-script/deployment-id.txt
+          git commit -m "Apps Script: Projekt und Web-App-Bereitstellung angelegt (automatisch)"
+          git pull --rebase
+          git push
+          # Pushes mit dem Action-Schlüssel stoßen GitHub Pages nicht sicher an → Bau ausdrücklich anfordern
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" || echo "Pages-Bau nicht angefordert (Pages noch nicht eingeschaltet?)"
+
+      - name: Zugang aufräumen
+        if: always()
+        run: rm -f "$HOME/.clasprc.json"

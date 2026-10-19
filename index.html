@@ -1,0 +1,257 @@
+<!doctype html>
+<!--
+  Cupra-Ziel — PWA
+  Version 0.1.0 (19.10.2026)
+
+  Google Maps → Teilen → Cupra-Ziel. Die App schickt den geteilten Text an das Apps Script
+  (Web-Dienst), bekommt Adresse und Koordinaten zurück und bietet „Kopieren & myCupra öffnen".
+  In myCupra: Karte → Suche → Einfügen → An Fahrzeug senden.
+
+  Versionen:
+    0.1.0  erste Fassung: Teilen-Ziel, Auflösen über Apps Script, Varianten zum Kopieren,
+           drei Öffnen-Methoden für myCupra zum Testen (A/B/C)
+-->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cupra-Ziel</title>
+<meta name="theme-color" content="#161616">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root {
+    --grund: #161616; --flaeche: #232323; --rand: #343434;
+    --text: #f2efec; --leise: #a9a29b; --kupfer: #c47a4c; --kupfer-dunkel: #9e5d36;
+    --gut: #7fbf8a; --warn: #e2b04a; --schlecht: #e07b6a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--grund); color: var(--text); }
+  body { font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 16px 16px 40px; max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 4px 0 14px; display: flex; align-items: center; gap: 10px; }
+  h1 img { width: 28px; height: 28px; border-radius: 6px; }
+  .karte { background: var(--flaeche); border: 1px solid var(--rand); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+  .leise { color: var(--leise); font-size: 14px; }
+  .name { font-size: 15px; color: var(--leise); margin-bottom: 4px; }
+  .haupt { font-size: 22px; font-weight: 600; word-break: break-word; margin-bottom: 12px; }
+  button { font: inherit; border-radius: 12px; border: 1px solid var(--rand); background: #2c2c2c; color: var(--text); padding: 12px 14px; cursor: pointer; }
+  button:active { transform: scale(0.99); }
+  .gross { width: 100%; background: var(--kupfer); border-color: var(--kupfer-dunkel); color: #1b120c; font-weight: 700; font-size: 19px; padding: 16px; margin-bottom: 10px; }
+  .breit { width: 100%; }
+  .zeile { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--rand); }
+  .zeile:first-child { border-top: 0; }
+  .zeile .t { flex: 1; word-break: break-word; }
+  .zeile .art { display: block; font-size: 12px; color: var(--leise); text-transform: uppercase; letter-spacing: .04em; }
+  .zeile button { padding: 8px 12px; font-size: 15px; white-space: nowrap; }
+  .hinweis { border-left: 3px solid var(--warn); padding: 8px 10px; background: #2a2416; border-radius: 6px; font-size: 15px; margin: 4px 0 12px; }
+  .fehler { border-left-color: var(--schlecht); background: #2c1b18; }
+  textarea { width: 100%; min-height: 76px; font: inherit; color: var(--text); background: #1c1c1c; border: 1px solid var(--rand); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  a { color: var(--kupfer); }
+  details summary { cursor: pointer; color: var(--leise); }
+  .methoden { display: grid; gap: 8px; margin-top: 10px; }
+  .methoden button.aktiv { border-color: var(--kupfer); }
+  #meldung { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #000; border: 1px solid var(--rand); padding: 10px 16px; border-radius: 999px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #meldung.zeigen { opacity: 1; }
+  .lade { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--leise); border-top-color: transparent; border-radius: 50%; animation: drehen 0.8s linear infinite; vertical-align: -2px; margin-right: 8px; }
+  @keyframes drehen { to { transform: rotate(360deg); } }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<h1><img src="icon-192.png" alt="">Cupra-Ziel</h1>
+
+<div id="status" class="karte" hidden></div>
+
+<div id="ergebnis" class="karte" hidden>
+  <div class="name" id="ergName"></div>
+  <div class="haupt" id="ergHaupt"></div>
+  <div id="ergHinweis" class="hinweis" hidden></div>
+  <button class="gross" id="knopfOeffnen">Kopieren &amp; myCupra öffnen</button>
+  <button class="breit" id="knopfKopieren">Nur kopieren</button>
+  <p class="leise">In myCupra: <b>Karte → Suche → Einfügen → An Fahrzeug senden</b></p>
+</div>
+
+<div id="weitere" class="karte" hidden>
+  <div class="leise" style="margin-bottom:6px">Findet myCupra nichts? Andere Schreibweise kopieren:</div>
+  <div id="liste"></div>
+  <p class="leise" id="pruefLink"></p>
+</div>
+
+<div id="eingabe" class="karte">
+  <div class="leise" style="margin-bottom:8px">In Google Maps einen Ort öffnen → <b>Teilen</b> → <b>Cupra-Ziel</b>. Oder hier einen Link einfügen:</div>
+  <textarea id="feld" placeholder="https://maps.app.goo.gl/…"></textarea>
+  <button class="breit" id="knopfAufloesen">Adresse ermitteln</button>
+</div>
+
+<details class="karte" id="diagnose">
+  <summary>myCupra öffnen – Methode testen</summary>
+  <p class="leise">Welche Methode myCupra sauber öffnet, ist noch nicht geprüft. Tippe der Reihe nach, die funktionierende wird gemerkt.</p>
+  <div class="methoden" id="methoden"></div>
+  <p class="leise" id="versionen"></p>
+</details>
+
+<div id="meldung"></div>
+
+<script>
+'use strict';
+const APP_VERSION = '0.1.0';
+const PAKET = 'com.cupra.mycupra';
+const METHODEN = {
+  A: { titel: 'A – App-Start (Launcher)', url: 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=' + PAKET + ';end' },
+  B: { titel: 'B – Schema cupra:// mit Paket', url: 'intent://#Intent;scheme=cupra;package=' + PAKET + ';end' },
+  C: { titel: 'C – nur cupra://', url: 'cupra://' },
+};
+const SPEICHER_METHODE = 'cupra-ziel.methode';
+
+const $ = id => document.getElementById(id);
+let aktuellerText = '';
+
+// ---------- kleine Helfer ----------
+function lies(schluessel) { try { return localStorage.getItem(schluessel); } catch (e) { return null; } }
+function schreib(schluessel, wert) { try { localStorage.setItem(schluessel, wert); } catch (e) { /* egal */ } }
+function methode() { const m = lies(SPEICHER_METHODE); return METHODEN[m] ? m : 'A'; }
+
+function melde(text) {
+  const m = $('meldung'); m.textContent = text; m.classList.add('zeigen');
+  clearTimeout(melde.t); melde.t = setTimeout(() => m.classList.remove('zeigen'), 1800);
+}
+function status(html, art) {
+  const s = $('status'); s.hidden = !html; s.className = 'karte' + (art ? ' ' + art : ''); s.innerHTML = html || '';
+}
+function esc(t) { return String(t).replace(/[&<>"]/g, z => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[z])); }
+
+async function kopiere(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (e) {
+    // Rückfall für ältere Browser
+    const f = document.createElement('textarea'); f.value = text; document.body.appendChild(f); f.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+    f.remove(); return ok;
+  }
+}
+function oeffneMyCupra(m) { window.location.href = METHODEN[m || methode()].url; }
+
+// ---------- Apps-Script-Dienst ----------
+async function dienstUrl() {
+  const p = new URLSearchParams(location.search);
+  if (p.get('dienst')) return p.get('dienst');                 // für Tests
+  const r = await fetch('apps-script/deployment-id.txt?t=' + Date.now(), { cache: 'no-store' });
+  if (!r.ok) throw new Error('Apps Script ist noch nicht veröffentlicht (deployment-id.txt fehlt).');
+  const id = (await r.text()).trim();
+  return 'https://script.google.com/macros/s/' + id + '/exec';
+}
+
+async function loese(text) {
+  const url = await dienstUrl();
+  const r = await fetch(url + '?link=' + encodeURIComponent(text));
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.fehler || 'Unbekannter Fehler');
+  return j;
+}
+
+// ---------- Teilen-Text auswerten (sofort, ohne Netz) ----------
+function zeilenAusTeilen(text) {
+  return String(text || '').split(/\r?\n/).map(z => z.trim())
+    .filter(z => z && !/^https?:\/\//i.test(z)).map(z => z.replace(/\s*https?:\/\/\S+/g, '').trim()).filter(Boolean);
+}
+
+// ---------- Anzeige ----------
+let hauptText = '';
+function zeigeErgebnis(j, geteilteZeilen) {
+  const varianten = (j.varianten || []).slice();
+  // Adresse aus dem Teilen-Text (Google Maps schickt sie bei echten Orten mit) ist genauer als die
+  // nächstgelegene Adresse aus der Rückwärts-Suche → nach vorne, dann gilt kein Abstands-Hinweis.
+  const geteilteAdresse = geteilteZeilen.find(z => /,/.test(z) && /\b\d{4,5}\b/.test(z));
+  let ausTeilen = false;
+  if (geteilteAdresse) {
+    const ohne = varianten.filter(v => v.text !== geteilteAdresse);
+    varianten.length = 0;
+    varianten.push({ art: 'Adresse aus Google Maps', text: geteilteAdresse }, ...ohne);
+    ausTeilen = true;
+  }
+  // Übrige Zeilen aus dem Teilen-Text (z. B. der Name) als zusätzliche Varianten
+  geteilteZeilen.forEach(z => { if (!varianten.some(v => v.text === z)) varianten.push({ art: 'Aus dem Teilen-Text', text: z }); });
+  if (!varianten.length) { status('Keine Adresse gefunden.', 'hinweis fehler'); return; }
+
+  hauptText = varianten[0].text;
+  $('ergName').textContent = j.name || varianten[0].art;
+  $('ergHaupt').textContent = hauptText;
+  const h = $('ergHinweis');
+  if (!ausTeilen && j.abstandM !== null && j.abstandM > 60) {
+    h.hidden = false;
+    h.textContent = 'Diese Adresse liegt ca. ' + (j.abstandM >= 1000 ? (j.abstandM / 1000).toFixed(1) + ' km' : j.abstandM + ' m') +
+      ' vom geteilten Punkt entfernt. In myCupra auf der Karte den Punkt nachschieben.';
+  } else h.hidden = true;
+  $('ergebnis').hidden = false;
+
+  const liste = $('liste'); liste.innerHTML = '';
+  varianten.slice(1).forEach(v => {
+    const z = document.createElement('div'); z.className = 'zeile';
+    z.innerHTML = '<div class="t"><span class="art">' + esc(v.art) + '</span>' + esc(v.text) + '</div>';
+    const k = document.createElement('button'); k.textContent = 'Kopieren';
+    k.onclick = async () => { if (await kopiere(v.text)) melde('Kopiert'); };
+    z.appendChild(k); liste.appendChild(z);
+  });
+  $('pruefLink').innerHTML = j.lat !== null && j.lat !== undefined
+    ? '<a href="https://www.google.com/maps/search/?api=1&query=' + j.lat + ',' + j.lon + '" target="_blank" rel="noopener">Punkt in Google Maps prüfen</a>' : '';
+  $('weitere').hidden = varianten.length < 2 && !$('pruefLink').innerHTML;
+  status('');
+  $('versionen').textContent = 'App v' + APP_VERSION + ' · Apps Script v' + (j.version || '?');
+}
+
+async function verarbeite(text) {
+  aktuellerText = text;
+  $('ergebnis').hidden = true; $('weitere').hidden = true;
+  const zeilen = zeilenAusTeilen(text);
+  status('<span class="lade"></span>Adresse wird ermittelt …');
+  try {
+    const j = await loese(text);
+    zeigeErgebnis(j, zeilen);
+  } catch (fehler) {
+    if (zeilen.length) {
+      zeigeErgebnis({ name: 'Nur aus dem Teilen-Text', varianten: [], abstandM: null, lat: null }, zeilen);
+      status('Auflösen fehlgeschlagen: ' + esc(fehler.message), 'hinweis fehler');
+    } else {
+      status('Auflösen fehlgeschlagen: ' + esc(fehler.message), 'hinweis fehler');
+    }
+  }
+}
+
+// ---------- Knöpfe ----------
+$('knopfOeffnen').onclick = async () => {
+  if (await kopiere(hauptText)) { melde('Kopiert – myCupra wird geöffnet'); setTimeout(() => oeffneMyCupra(), 250); }
+  else melde('Kopieren nicht möglich');
+};
+$('knopfKopieren').onclick = async () => { if (await kopiere(hauptText)) melde('Kopiert'); };
+$('knopfAufloesen').onclick = () => { const t = $('feld').value.trim(); if (t) verarbeite(t); };
+
+function baueMethoden() {
+  const box = $('methoden'); box.innerHTML = '';
+  Object.keys(METHODEN).forEach(m => {
+    const b = document.createElement('button');
+    b.textContent = METHODEN[m].titel + (m === methode() ? '  ✓ gemerkt' : '');
+    b.className = m === methode() ? 'aktiv' : '';
+    b.onclick = () => { schreib(SPEICHER_METHODE, m); baueMethoden(); oeffneMyCupra(m); };
+    box.appendChild(b);
+  });
+}
+
+// ---------- Start ----------
+baueMethoden();
+$('versionen').textContent = 'App v' + APP_VERSION;
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+(function start() {
+  const p = new URLSearchParams(location.search);
+  const geteilt = [p.get('title'), p.get('text'), p.get('url')].filter(Boolean).join('\n').trim();
+  if (geteilt) {
+    $('feld').value = geteilt;
+    history.replaceState(null, '', location.pathname + (p.get('dienst') ? '?dienst=' + encodeURIComponent(p.get('dienst')) : ''));
+    verarbeite(geteilt);
+  }
+})();
+
+window.cupraZiel = { zeilenAusTeilen, verarbeite, METHODEN, APP_VERSION };
+</script>
+</body>
+</html>
