@@ -1,6 +1,6 @@
 // Tests für apps-script/Code.js ohne Google: UrlFetchApp und Maps werden nachgebaut.
 // Aufruf: node tests/test-code.js
-// Version 0.1.0 (19.10.2026)
+// Version 0.2.0 (19.10.2026) – Fälle für Suchtext, Plus Code, Fehler mit URL
 const fs = require('fs');
 const path = require('path');
 
@@ -32,7 +32,7 @@ const ContentService = { createTextOutput: t => ({ text: t, setMimeType() { retu
 const Logger = { log() {} };
 
 const gs = new Function('UrlFetchApp', 'Maps', 'ContentService', 'Logger',
-  quelle + '; return { werteMapsUrlAus_, linkAusText_, zielAusText_, varianten_, ohneLand_, folgeWeiterleitungen_, doGet, VERSION };')(
+  quelle + '; return { werteMapsUrlAus_, linkAusText_, zielAusText_, varianten_, ohneLand_, folgeWeiterleitungen_, istPlusCode_, doGet, VERSION };')(
   UrlFetchApp, Maps, ContentService, Logger);
 
 let fehler = 0;
@@ -77,6 +77,28 @@ pruefe(z.adresse === 'Hauptstraße 210, 58675 Hemer, Deutschland', 'Straßenadre
 pruefe(z.varianten[0].text === 'Hauptstraße 210, 58675 Hemer', 'Erste Variante ohne Land: ' + JSON.stringify(z.varianten[0]));
 pruefe(z.abstandM > 0 && z.abstandM < 100, 'Abstand berechnet: ' + z.abstandM + ' m');
 pruefe(z.varianten.some(v => v.art === 'Koordinaten'), 'Koordinaten als Reserve-Variante');
+
+// --- 3b. v0.2.0: Suchtext / Plus Code statt Koordinaten ----------------------
+const qText = gs.werteMapsUrlAus_('https://maps.google.com/?q=9QPH%2BFCP+Hemer&entry=gps');
+pruefe(qText.lat === null && qText.suche === '9QPH+FCP Hemer', 'q=Suchtext erkannt: ' + JSON.stringify(qText));
+pruefe(gs.istPlusCode_('9QPH+FCP Hemer') && gs.istPlusCode_('9QPH+FCP') && !gs.istPlusCode_('Hauptstraße 2, 58675 Hemer'), 'Plus Code erkannt');
+
+weiterleitungen['https://maps.app.goo.gl/plus'] = 'https://maps.google.com/?q=9QPH%2BFCP+Hemer,+Deutschland&entry=gps';
+vorAntwort = { status: 'OK', results: [{ geometry: { location: { lat: 51.386212, lng: 7.778578 } } }] };
+const zp = gs.zielAusText_('https://maps.app.goo.gl/plus');
+pruefe(zp.ok && zp.lat === 51.386212 && /gesucht/.test(zp.quelle), 'Plus Code über Geocoder gesucht');
+pruefe(zp.varianten[0].text === 'Hauptstraße 210, 58675 Hemer', 'Plus Code → Straßenadresse: ' + (zp.varianten[0] || {}).text);
+pruefe(!zp.varianten.some(v => /\+/.test(v.text)), 'Kein Plus Code unter den Varianten');
+
+weiterleitungen['https://maps.app.goo.gl/name'] = 'https://www.google.com/maps/place/Bahnhof+Morges/data=!4m2!3m1!1s0x0:0x1';
+vorAntwort = { status: 'OK', results: [{ geometry: { location: { lat: 46.5110, lng: 6.4980 } } }] };
+const zn = gs.zielAusText_('https://maps.app.goo.gl/name');
+pruefe(zn.ok && zn.lat === 46.511 && zn.name === 'Bahnhof Morges', 'Nur Name → über Geocoder gesucht');
+
+weiterleitungen['https://maps.app.goo.gl/leer'] = 'https://www.google.com/maps/data=!4m2';
+vorAntwort = { status: 'ZERO_RESULTS', results: [] };
+const zl = gs.zielAusText_('https://maps.app.goo.gl/leer');
+pruefe(zl.ok === false && zl.aufgeloest === 'https://www.google.com/maps/data=!4m2', 'Fehler enthält die aufgelöste URL');
 
 // --- 4. doGet ------------------------------------------------------------------
 const roh = gs.doGet({ parameter: { link: 'nix' } });

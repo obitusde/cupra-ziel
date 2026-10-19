@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
   Cupra-Ziel — PWA
-  Version 0.1.0 (19.10.2026)
+  Version 0.1.1 (19.10.2026)
 
   Google Maps → Teilen → Cupra-Ziel. Die App schickt den geteilten Text an das Apps Script
   (Web-Dienst), bekommt Adresse und Koordinaten zurück und bietet „Kopieren & myCupra öffnen".
@@ -10,6 +10,10 @@
   Versionen:
     0.1.0  erste Fassung: Teilen-Ziel, Auflösen über Apps Script, Varianten zum Kopieren,
            drei Öffnen-Methoden für myCupra zum Testen (A/B/C)
+    0.1.1  Manifest-id "/cupra-ziel/" (vorher "./" = gleiche id wie Fotoschatz → Installation hing);
+           myCupra öffnen nie mehr über den Play Store: jede Methode hat browser_fallback_url zurück
+           in die App (?zurueck=X) mit Hinweis; Standard jetzt B (cupra://oauth-callback), weil A
+           bei Christof im Play Store landete
 -->
 <html lang="de">
 <head>
@@ -94,13 +98,17 @@
 
 <script>
 'use strict';
-const APP_VERSION = '0.1.0';
+const APP_VERSION = '0.1.1';
 const PAKET = 'com.cupra.mycupra';
+// Klappt ein Intent nicht, öffnet Chrome sonst den Play Store. Mit S.browser_fallback_url geht es
+// stattdessen zurück in diese App (?zurueck=<Methode>), die dann einen Hinweis zeigt.
+const zurueck = m => 'S.browser_fallback_url=' + encodeURIComponent(new URL('./?zurueck=' + m, location.href).href);
 const METHODEN = {
-  A: { titel: 'A – App-Start (Launcher)', url: 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=' + PAKET + ';end' },
-  B: { titel: 'B – Schema cupra:// mit Paket', url: 'intent://#Intent;scheme=cupra;package=' + PAKET + ';end' },
-  C: { titel: 'C – nur cupra://', url: 'cupra://' },
+  A: { titel: 'A – App-Start (Launcher)', url: 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=' + PAKET + ';' + zurueck('A') + ';end' },
+  B: { titel: 'B – App-Adresse cupra://oauth-callback', url: 'intent://oauth-callback#Intent;scheme=cupra;package=' + PAKET + ';' + zurueck('B') + ';end' },
+  C: { titel: 'C – App-Adresse cupra:// (ohne Paket)', url: 'intent://oauth-callback#Intent;scheme=cupra;' + zurueck('C') + ';end' },
 };
+const STANDARD_METHODE = 'B';
 const SPEICHER_METHODE = 'cupra-ziel.methode';
 
 const $ = id => document.getElementById(id);
@@ -109,7 +117,7 @@ let aktuellerText = '';
 // ---------- kleine Helfer ----------
 function lies(schluessel) { try { return localStorage.getItem(schluessel); } catch (e) { return null; } }
 function schreib(schluessel, wert) { try { localStorage.setItem(schluessel, wert); } catch (e) { /* egal */ } }
-function methode() { const m = lies(SPEICHER_METHODE); return METHODEN[m] ? m : 'A'; }
+function methode() { const m = lies(SPEICHER_METHODE); return METHODEN[m] ? m : STANDARD_METHODE; }
 
 function melde(text) {
   const m = $('meldung'); m.textContent = text; m.classList.add('zeigen');
@@ -243,6 +251,15 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 
 (function start() {
   const p = new URLSearchParams(location.search);
+  const fehlgeschlagen = p.get('zurueck');
+  if (METHODEN[fehlgeschlagen]) {
+    // Chrome kam über browser_fallback_url zurück: diese Methode öffnet myCupra nicht
+    history.replaceState(null, '', location.pathname);
+    status('Methode ' + fehlgeschlagen + ' hat myCupra nicht geöffnet. Kamst du über „Kopieren &amp; myCupra öffnen“, ist die Adresse schon kopiert – ' +
+      'öffne myCupra selbst oder probiere unten eine andere Methode.', 'hinweis fehler');
+    $('diagnose').open = true;
+    return;
+  }
   const geteilt = [p.get('title'), p.get('text'), p.get('url')].filter(Boolean).join('\n').trim();
   if (geteilt) {
     $('feld').value = geteilt;

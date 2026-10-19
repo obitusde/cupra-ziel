@@ -3,7 +3,7 @@
   "short_name": "Cupra-Ziel",
   "description": "Google-Maps-Ort teilen → Adresse kopieren → in myCupra einfügen und ans Auto senden.",
   "lang": "de",
-  "id": "./",
+  "id": "/cupra-ziel/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

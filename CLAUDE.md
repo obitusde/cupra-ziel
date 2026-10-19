@@ -1,6 +1,6 @@
 # Cupra-Ziel — Projektstand für Claude
 
-**Stand 19.10.2026** · App (`index.html`) v0.1.0 · Apps Script (`apps-script/Code.js`) v0.1.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.0.0
+**Stand 19.10.2026** · App (`index.html`) v0.1.1 · Apps Script (`apps-script/Code.js`) v0.2.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.0.0
 
 ## 1. Nutzer und Arbeitsweise (unbedingt beachten)
 
@@ -33,7 +33,9 @@ Google Maps (Teilen) ──text/url──► PWA (GitHub Pages, index.html, shar
 ```
 - Die PWA liest die Web-App-Adresse aus `apps-script/deployment-id.txt` (vom ersten Action-Lauf angelegt). Für Tests: `?dienst=<URL>`.
 - Enthält der Teilen-Text eine Adresszeile (mit PLZ), hat sie Vorrang vor der Rückwärts-Suche.
-- myCupra öffnen: Paket **`com.cupra.mycupra`** (Play Store geprüft). Drei Methoden zum Testen (A Launcher-Intent, B `intent://…scheme=cupra`, C `cupra://`); die gewählte steht in `localStorage['cupra-ziel.methode']`. Das App-Schema `cupra://oauth-callback` stammt aus PyCupra.
+- myCupra öffnen: Paket **`com.cupra.mycupra`** (Play Store geprüft). Drei Methoden zum Testen (A Launcher-Intent mit Paket, B `cupra://oauth-callback` mit Paket = Standard, C `cupra://oauth-callback` ohne Paket); die gewählte steht in `localStorage['cupra-ziel.methode']`. Das App-Schema `cupra://oauth-callback` stammt aus PyCupra. **Nie in den Play Store:** jede Methode hat `S.browser_fallback_url` → `./?zurueck=<Methode>`, die App zeigt dann einen Hinweis. A landete am 19.10.2026 bei Christof im Play Store (Chrome öffnet nur Activities mit BROWSABLE, der Launcher hat das meist nicht).
+- **Manifest-`id` muss `/cupra-ziel/` bleiben.** `"./"` wird vom Ursprung aus aufgelöst = `https://obitusde.github.io/` = id von Fotoschatz → Chrome meldete „bereits installiert", Öffnen scheiterte (19.10.2026).
+- Links ohne Koordinaten (Suchtext `q=…`, Plus Code, nur Name) sucht das Script über den Geocoder (v0.2.0); Plus Codes werden in eine Straßenadresse umgewandelt. Fehlerantworten enthalten `aufgeloest`.
 - Kein Schlüssel am Web-Dienst (Repo ist öffentlich; Dienst nimmt nur Maps-Links, gibt nur Kartendaten zurück).
 
 ## 4. Zugänge
@@ -46,7 +48,7 @@ Google Maps (Teilen) ──text/url──► PWA (GitHub Pages, index.html, shar
 | Web-App | Deployment-ID `AKfycbwRpVeFUoUoVfjENhinhW9zfR5EjWWRk4Nx0zxRBpldBBA0YKf4f7Xl_YwDO-Vq1wsB` (`apps-script/deployment-id.txt`), URL `https://script.google.com/macros/s/<ID>/exec` · `?test=1` Diagnose mit 3 Testlinks · `?link=…` |
 | Secret `CLASPRC_JSON` | Inhalt von Christofs `~/.clasprc.json`, am 19.10.2026 per `gh secret set` gesetzt. **Nie ausgeben.** |
 
-Erste Freigabe (Stand 19.10.2026 noch offen): Nach dem ersten Deploy muss Christof einmal die Web-App-URL (bzw. im Editor `testeLinks`) öffnen und Google die Berechtigungen (externe Anfragen) erlauben.
+Erste Freigabe (am 19.10.2026 erteilt, `testeLinks` lief): Nach dem ersten Deploy muss Christof einmal die Web-App-URL (bzw. im Editor `testeLinks`) öffnen und Google die Berechtigungen (externe Anfragen) erlauben.
 
 ## 5. Routine
 
@@ -60,7 +62,7 @@ Veröffentlichen = committen und auf `main` pushen. Die Action läuft bei Änder
 
 ## 6. Offene Tests (Christof, Pixel)
 
-1. Web-App `?test=1` öffnen → lösen sich die 3 Links auf (EU-Zustimmungsseite)?
+1. ~~Web-App `?test=1`~~ 19.10.2026: Links 1+2 ok (Edmund-Weller-str. 2, 58675 Hemer, ~40 m), Link 3 „Keine Adresse" → v0.2.0, erneut prüfen.
 2. Welche Variante findet die myCupra-Suche (Adresse ohne Land / mit Land / Name + Ort)?
 3. Welche Öffnen-Methode (A/B/C) startet myCupra sauber?
 4. Erscheint Cupra-Ziel nach der Installation im Teilen-Menü von Google Maps, und was steht im geteilten Text (nur Link oder Name + Adresse + Link)?

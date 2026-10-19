@@ -1,6 +1,6 @@
 /**
  * Cupra-Ziel — Apps Script (Web-Dienst)
- * Version 0.1.0 (19.10.2026)
+ * Version 0.2.0 (19.10.2026)
  *
  * Nimmt einen geteilten Google-Maps-Link (oder Text mit Link) entgegen, löst ihn auf
  * und liefert Name, Koordinaten und eine Adresse, die in die Suche der myCupra-App passt.
@@ -16,8 +16,11 @@
  * Versionen:
  *   0.1.0  erste Fassung: Link auflösen (aus ladeplanung übernommen), Rückwärts-Geokodierung,
  *          Diagnose ?test=1 und Editor-Funktion testeLinks()
+ *   0.2.0  Links ohne Koordinaten (Suchtext q=…, Plus Code, nur Name) werden über den Geocoder
+ *          gesucht; Plus Codes werden in eine Straßenadresse umgewandelt (myCupra kennt keine
+ *          Plus Codes); Fehler enthalten die aufgelöste URL (Testlink 3 vom 19.10.2026)
  */
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 
 /** Christofs Beispiel-Links vom 18.10.2026 (Hemer u. a.) für die Diagnose. */
 const TESTLINKS = [
@@ -71,43 +74,69 @@ function zielAusText_(text) {
   const link = linkAusText_(text);
   if (!link) throw new Error('Kein Google-Maps-Link gefunden');
 
-  const aufgeloest = folgeWeiterleitungen_(link);
-  const info = werteMapsUrlAus_(aufgeloest);
+  let aufgeloest = '';
   const ergebnis = {
     ok: true,
     version: VERSION,
     link: link,
-    aufgeloest: aufgeloest,
-    name: info.name || '',
-    lat: info.lat,
-    lon: info.lon,
+    aufgeloest: '',
+    name: '',
+    lat: null,
+    lon: null,
     adresse: '',
     abstandM: null,
     genauigkeit: '',
+    quelle: '',
     varianten: [],
   };
+  try {
+    aufgeloest = folgeWeiterleitungen_(link);
+    ergebnis.aufgeloest = aufgeloest;
+    const info = werteMapsUrlAus_(aufgeloest);
+    ergebnis.name = info.name || '';
+    ergebnis.lat = info.lat;
+    ergebnis.lon = info.lon;
+    ergebnis.quelle = info.lat !== null ? 'Koordinaten im Link' : '';
 
-  // Ohne Koordinaten: Adresse aus dem Link vorwärts geokodieren
-  if (info.lat === null && info.adresse) {
-    const vor = geokodiere_(info.adresse);
-    if (vor) { ergebnis.lat = vor.lat; ergebnis.lon = vor.lon; }
-    ergebnis.adresse = info.adresse;
-  }
-
-  // Mit Koordinaten: nächste Adresse suchen
-  if (ergebnis.lat !== null && !ergebnis.adresse) {
-    const rueck = rueckwaerts_(ergebnis.lat, ergebnis.lon);
-    if (rueck) {
-      ergebnis.adresse = rueck.adresse;
-      ergebnis.abstandM = Math.round(haversineM_(ergebnis.lat, ergebnis.lon, rueck.lat, rueck.lon));
-      ergebnis.genauigkeit = rueck.genauigkeit;
-      ergebnis.ort = rueck.ort;
+    // Ohne Koordinaten: Adresse, Suchtext (q=…) oder Name über den Geocoder suchen
+    if (info.lat === null) {
+      const suche = info.adresse || info.suche || info.name;
+      if (suche) {
+        const vor = geokodiere_(suche);
+        if (vor) {
+          ergebnis.lat = vor.lat; ergebnis.lon = vor.lon;
+          ergebnis.quelle = 'gesucht: ' + suche;
+        }
+        // Eine echte Adresse behalten; Plus Codes kennt myCupra nicht → später Straßenadresse suchen
+        if (info.adresse && !istPlusCode_(info.adresse)) ergebnis.adresse = info.adresse;
+        if (!ergebnis.name && info.suche && !istPlusCode_(info.suche)) ergebnis.name = info.suche;
+      }
     }
+
+    // Mit Koordinaten: nächste Adresse suchen
+    if (ergebnis.lat !== null && !ergebnis.adresse) {
+      const rueck = rueckwaerts_(ergebnis.lat, ergebnis.lon);
+      if (rueck) {
+        ergebnis.adresse = rueck.adresse;
+        ergebnis.abstandM = Math.round(haversineM_(ergebnis.lat, ergebnis.lon, rueck.lat, rueck.lon));
+        ergebnis.genauigkeit = rueck.genauigkeit;
+        ergebnis.ort = rueck.ort;
+      }
+    }
+  } catch (fehler) {
+    return { ok: false, version: VERSION, link: link, aufgeloest: aufgeloest, fehler: String(fehler && fehler.message || fehler) };
   }
 
   ergebnis.varianten = varianten_(ergebnis);
-  if (!ergebnis.varianten.length) throw new Error('Keine Adresse gefunden');
+  if (!ergebnis.varianten.length) {
+    return { ok: false, version: VERSION, link: link, aufgeloest: aufgeloest, fehler: 'Keine Adresse gefunden' };
+  }
   return ergebnis;
+}
+
+/** Plus Code wie „9QPH+FCP" oder „9QPH+FCP Hemer". */
+function istPlusCode_(text) {
+  return /(^|\s)[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3}(\s|,|$)/i.test(String(text || ''));
 }
 
 /** Suchtexte für myCupra, beste zuerst. Welche myCupra annimmt, klärt der Handy-Test. */
@@ -199,6 +228,14 @@ function werteMapsUrlAus_(url) {
     || u.match(/[?&](?:q|query)=(-?\d+\.\d+)(?:,|%2C)\s*(?:\+|%20)?(-?\d+\.\d+)/i)
     || u.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
   if (ersatz) return { name: name, lat: Number(ersatz[1]), lon: Number(ersatz[2]) };
+
+  // Suchtext statt Koordinaten: ?q=9QPH%2BFCP+Hemer oder ?q=Bahnhof+Morges
+  const mSuche = u.match(/[?&](?:q|query)=([^&#]+)/i);
+  if (mSuche) {
+    let suche = '';
+    try { suche = decodeURIComponent(mSuche[1].replace(/\+/g, ' ')).trim(); } catch (e) { suche = ''; }
+    if (suche) return { name: name, lat: null, lon: null, suche: suche };
+  }
 
   // Neueres Teilen-Format ohne Koordinaten: „Name, Straße Nr, PLZ Ort, Land"
   const teile = name.split(',');
