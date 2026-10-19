@@ -1,4 +1,5 @@
-# Apps Script anlegen und veröffentlichen — Version 1.0.0 (19.10.2026)
+# Apps Script anlegen und veröffentlichen — Version 1.0.1 (19.10.2026)
+#   1.0.1  checkout/setup-node auf v5 (Node 24), Lauf nach gesetztem Secret
 #
 # Läuft bei jedem Push auf main, der etwas unter apps-script/, tests/ oder an dieser Datei ändert,
 # und auf Knopfdruck (Actions → „Apps Script veröffentlichen" → „Run workflow").
@@ -39,10 +40,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Repo auschecken
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Node einrichten
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
 

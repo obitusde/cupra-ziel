@@ -1,6 +1,6 @@
 # Cupra-Ziel — Projektstand für Claude
 
-**Stand 19.10.2026** · App (`index.html`) v0.1.0 · Apps Script (`apps-script/Code.js`) v0.1.0 · Action (`.github/workflows/apps-script.yml`) v1.0.0 · Service Worker (`sw.js`) v1.0.0
+**Stand 19.10.2026** · App (`index.html`) v0.1.0 · Apps Script (`apps-script/Code.js`) v0.1.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.0.0
 
 ## 1. Nutzer und Arbeitsweise (unbedingt beachten)
 
