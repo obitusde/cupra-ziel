@@ -1,6 +1,6 @@
 # Cupra-Ziel — Projektstand für Claude
 
-**Stand 26.10.2026** · App (`index.html`) v0.3.0 · MacroDroid-Makro (`macrodroid/Cupra-v6.macro`) v6 · Apps Script (`apps-script/Code.js`) v0.3.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.1.0
+**Stand 26.10.2026** · App (`index.html`) v0.3.0 · MacroDroid-Makro (`macrodroid/Cupra-v7.macro`) v7 · Apps Script (`apps-script/Code.js`) v0.3.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.1.0
 
 ## 1. Nutzer und Arbeitsweise (unbedingt beachten)
 
@@ -78,14 +78,14 @@ Veröffentlichen = committen und auf `main` pushen. Die Action läuft bei Änder
 4. ✅ Cupra-Ziel erscheint im Teilen-Menü (19.10.2026).
 5. ✅ 19.10.2026: Favoriten (Schlüssel, Sheet) klappen; `/map/evroute`, `/destsync`, `/tourimport`, `/home` → nur Startseite (entfernt in v0.3.0).
 6. ✅ 19.10.2026: MacroDroid-Makro v4/v5 sendet ans Auto (Webhook im Browser aufgerufen). v5: Treffer-Klick 650 → 470 (traf bei „Beulerweg 35, Neuenrade" die 2. Zeile).
-8. v6 (26.10.2026): im Auto mit Zündung an senden – wird „PARKPOSITION NICHT VERFÜGBAR" per Text-Klick „OK" geschlossen?
+8. v6 (26.10.2026, Zündung an): Import ok, kam bis zum Detailblatt; Senden-Klick 2296 lag am unteren Knopfrand → v7: 2260. Offen: v7 senden (Zündung an und aus); geht „PARKPOSITION NICHT VERFÜGBAR" per Text-Klick „OK" weg?
 7. v0.3.0: Webhook in den Einstellungen eintragen, „Ans Auto senden" aus der App, Favorit antippen; Ladeplanung v0.33.0 „Ans Auto senden".
 
 ## 7. MacroDroid (seit 19.10.2026)
 
 - Makro-Datei `macrodroid/Cupra-v<n>.macro` (JSON, Export von MacroDroid; Variable `ziel` global). Ändern: Datei per Python bearbeiten, `m_name` und Nummer hochzählen, neue `m_GUID`/`m_SIGUID` vergeben, Christof importiert und schaltet die alte Fassung aus (alle hören auf den Webhook `cupra`). Die Datei enthält **keine** Geräte-ID; vor dem Commit `m_stringValue` von `ziel` leeren (letzte Adresse).
 - MacroDroid-Log zeigt nur, dass Aktionen liefen, **nicht ob ein Klick etwas getroffen hat** → Screenshots an der hängenden Stelle. Klick per Text findet in myCupra nichts Verlässliches (außer „Suche"), „Paste" wirkt nicht → Koordinaten. `WRITE_SECURE_SETTINGS` per adb erteilt (Christof 19.10.2026).
-- Bei Zündung an zeigt die myCupra-Karte „PARKPOSITION NICHT VERFÜGBAR" (OK ≈ 540, 1527, fast auf dem Zwischenablage-Chip). v6 klickt Text „OK" vor und nach „Suche", dann „Suche" erneut (26.10.2026).
+- Bei Zündung an zeigt die myCupra-Karte „PARKPOSITION NICHT VERFÜGBAR" (OK ≈ 540, 1527, fast auf dem Zwischenablage-Chip). v6 klickt Text „OK" vor und nach „Suche", dann „Suche" erneut (26.10.2026). Senden-Knopf bei Zündung an y 2172–2296 → v7 tippt 2260.
 - Aktionsbausteine, deren JSON aus Beispielen stammt (Import hat geklappt): `LaunchHomeScreenAction` (keine Felder), `KillBackgroundAppAction` (`m_applicationNameList`, `m_packageNameList`), `ToastAction` (Felder aus Export in BespredeL/MacroDroid).
 
 ## 8. Hinweise für die Cloud-Sitzung

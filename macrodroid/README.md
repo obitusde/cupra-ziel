@@ -1,6 +1,6 @@
 # MacroDroid-Makro „Cupra" – Ziel automatisch ans Auto senden
 
-Stand 26.10.2026 · Makro **v6** (`Cupra-v6.macro`) · für **Pixel 8** (1080 × 2400), myCupra 2.15, Anzeige- und Schriftgröße Standard
+Stand 26.10.2026 · Makro **v7** (`Cupra-v7.macro`) · für **Pixel 8** (1080 × 2400), myCupra 2.15, Anzeige- und Schriftgröße Standard
 
 Cupra-Ziel (und die Ladeplanung) rufen den Webhook `https://trigger.macrodroid.com/<Geräte-ID>/cupra?ziel=<Text>` auf.
 Das Makro macht dann das, was man sonst von Hand tut:
@@ -22,7 +22,7 @@ Das Makro macht dann das, was man sonst von Hand tut:
 | 13 | Warten | 2 s |
 | 14 | UI-Interaktion Klick (x,y) | **540, 470** = Mitte der ersten Trefferzeile |
 | 15 | Warten | 2 s |
-| 16 | UI-Interaktion Klick (x,y) | **540, 2296** = „AN DAS FAHRZEUG SENDEN" |
+| 16 | UI-Interaktion Klick (x,y) | **540, 2260** = „AN DAS FAHRZEUG SENDEN" |
 | 17 | Warten | 3 s (Bestätigung in der App) |
 | 18 | Startbildschirm | |
 | 19 | Warten | 1 s |
@@ -36,7 +36,7 @@ Das Makro macht dann das, was man sonst von Hand tut:
    ```
    adb shell pm grant com.arlosoft.macrodroid android.permission.WRITE_SECURE_SETTINGS
    ```
-3. `Cupra-v6.macro` aufs Handy laden → MacroDroid → ⋮ → **Import**. Ältere Fassungen ausschalten (alle hören auf `cupra`).
+3. `Cupra-v7.macro` aufs Handy laden → MacroDroid → ⋮ → **Import**. Ältere Fassungen ausschalten (alle hören auf `cupra`).
 4. Im Makro beim Auslöser „Webhook (URL)" die Adresse kopieren und in **Cupra-Ziel → Einstellungen → MacroDroid-Webhook** eintragen.
    Die Adresse enthält die Geräte-ID → **nie ins Repo, nicht teilen.**
 5. Test: Cupra-Ziel → Favorit antippen. Handy muss entsperrt sein, Bildschirm an, hochkant.
@@ -60,3 +60,9 @@ Das Makro macht dann das, was man sonst von Hand tut:
   erst nach „Suche", traf v5 „OK" statt Einfügen → Suchfeld blieb leer.
 - v6 klickt „OK" per Text (wie „Suche") vor und nach „Suche" und tippt danach „Suche" noch einmal.
   **Noch nicht getestet:** ob der Text-Klick „OK" findet. Wenn nicht: Screenshot mit Hinweis → auf Koordinaten umstellen.
+
+## Senden-Knopf (26.10.2026, v7)
+
+- Bei Zündung an (Detailblatt mit „0 min (0.0 km)", darunter weitere Knöpfe) reicht der Knopf von y ≈ 2172 bis 2296.
+  v6 tippte mit 2296 genau auf den unteren Rand → nichts passierte. v7: **2260**, liegt auch noch im Bereich der
+  ursprünglichen Einmessung (v3, Knopf um 2296), falls das Blatt ohne Zündung tiefer sitzt.
