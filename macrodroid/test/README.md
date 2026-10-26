@@ -58,6 +58,6 @@ Schließen der Ja/Nein-Abfrage (MacroDroid-Fenster noch im Vordergrund) → v5 w
 
 ### Unsicher (v5)
 
-- Ob der Tipp 70, 567 mit 2 s Abstand zur Abfrage wirkt; ob „SUR SITE" noch eine Bestätigung verlangt.
+- Ob der Tipp 70, 567 mit 2 s Abstand zur Abfrage wirkt. („SUR SITE" bucht sofort, ohne Bestätigung – Christof 26.10.2026.)
 - Ob Chrome mit `application_id` wirklich denselben Tab nimmt (Tab-Zahl darf nicht mehr steigen).
 - Später: Start per GPS (Ankunft am Arbeitsort).
