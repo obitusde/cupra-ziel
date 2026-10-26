@@ -58,6 +58,23 @@ Schließen der Ja/Nein-Abfrage (MacroDroid-Fenster noch im Vordergrund) → v5 w
 
 ### Unsicher (v5)
 
-- Ob der Tipp 70, 567 mit 2 s Abstand zur Abfrage wirkt. („SUR SITE" bucht sofort, ohne Bestätigung – Christof 26.10.2026.)
+- („SUR SITE" bucht sofort, ohne Bestätigung – Christof 26.10.2026.)
+- **v5-Test 26.10.2026 13:22:** Ablauf laut Log korrekt, Screenshot vor dem Tipp ohne Abfrage-Fenster, Tipp 70, 567
+  ausgeführt – trotzdem keine Buchung (Bilder vor/nach gleich). Timing war es also nicht. `application_id` wirkt
+  (Tab-Zahl blieb 5), Chrome beenden klappt. → Klick-Test v1.
 - Ob Chrome mit `application_id` wirklich denselben Tab nimmt (Tab-Zahl darf nicht mehr steigen).
 - Später: Start per GPS (Ankunft am Arbeitsort).
+
+## Klick-Test v1 (`Klick-Test-v1.macro`, 26.10.2026)
+
+**Stempelt nicht.** Klärt, wie MacroDroid in Chrome überhaupt etwas anklicken kann. Ziel ist nur der harmlose
+Link „Accueil" (Brotkrume oben links auf der Stempelseite, wechselt zur Startseite).
+
+1. Stempelseite öffnen (gleicher Intent wie Stempeln v5), 7 s, Screenshot 1a → **Tipp auf die Stelle 94, 157**
+   (Text „Accueil" ≈ x 71–118, y 150–166), 4 s, Screenshot 1b.
+2. Stempelseite erneut öffnen, 7 s, Screenshot 2a → **Klick über den Text `Accueil`** (ohne Regex, Einstellungen wie
+   „Suche" im Cupra-Makro), 4 s, Screenshot 2b.
+3. Startbildschirm, Chrome beenden. Popups zeigen, welcher Test gerade läuft.
+
+Auswertung: Zeigt 1b bzw. 2b die Startseite (Kästen „Timbrer", „Mes indicateurs" …), funktioniert dieser Weg →
+Stempeln v6 klickt „SUR SITE" genauso.
