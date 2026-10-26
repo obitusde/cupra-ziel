@@ -4,10 +4,11 @@ Hier liegen Makros, die nichts mit Cupra-Ziel zu tun haben und nur zum Ausprobie
 Wenn sie laufen, zieht Christof sie in ein eigenes Repo um. **Nichts Persönliches in die Dateien** (Adressen,
 Namen, Zugangsdaten): Solche Werte stehen nur in MacroDroid-Variablen auf dem Handy.
 
-## Stempeln v6 (`Stempeln-v6.macro`, 26.10.2026)
+## Stempeln v7 (`Stempeln-v7.macro`, 26.10.2026)
 
 Stempelt in der Zeiterfassung „SUR SITE" (schaltet je nach Stand **ein oder aus**, bucht sofort, ohne Bestätigung –
-Christof 26.10.2026). Von Hand starten.
+Christof 26.10.2026). Von Hand starten. **Keine Ja/Nein-Abfrage mehr** (Christof 26.10.2026: „ganz raus") –
+jeder Start stempelt.
 
 **Adresse fest im Makro** (Christof 26.10.2026: „mach Makro jetzt mit der URL, später lösche ich das aus dem Repo"):
 direkt die Stempelseite `…/webquartz/ux/clock`.
@@ -17,17 +18,12 @@ Firefox merkt sich das nur pro Tab, Chrome pro Seite (bei Christof eingerichtet)
 
 | # | Aktion | Wert |
 |---|---|---|
-| 1 | Log | Start |
-| 2–3 | Variable `stempeln` mit Abfrage, Log | **zuerst**, bevor Chrome aufgeht |
-| 4 | Wenn `stempeln` | |
-| 5–7 | Log, Intent (Activity), Warten 7 s | VIEW `…/ux/clock`, Paket `com.android.chrome`, Extra `com.android.browser.application_id` = `macrodroid.stempeln` (immer derselbe Tab) |
-| 8–13 | Log, wenn `debug`: Screenshot **A** | Stempelseite vor dem Tipp |
-| 14–16 | Log, UI-Klick (x,y) **70, 567** = „SUR SITE", Warten 3 s | |
-| 17–21 | wenn `debug`: Screenshot **B** | 3 s nach dem Tipp |
-| 22–27 | Warten 5 s, wenn `debug`: Screenshot **C** | 9 s nach dem Tipp |
-| 28–33 | Log, Popup „bitte Buchung prüfen", Startbildschirm, Warten 1 s, Chrome beenden | |
-| 34–36 | Sonst: Log, Popup „Nicht gestempelt" | Chrome wird gar nicht geöffnet |
-| 37–38 | Ende Wenn, Log | |
+| 1–4 | Log, Intent (Activity), Warten 7 s | VIEW `…/ux/clock`, Paket `com.android.chrome`, Extra `com.android.browser.application_id` = `macrodroid.stempeln` (immer derselbe Tab) |
+| 5–10 | Log, wenn `debug`: Screenshot **A** | Stempelseite vor dem Tipp |
+| 11–13 | Log, UI-Klick (x,y) **70, 567** = „SUR SITE", Warten 3 s | |
+| 14–18 | wenn `debug`: Screenshot **B** | 3 s nach dem Tipp |
+| 19–24 | Warten 5 s, wenn `debug`: Screenshot **C** | 9 s nach dem Tipp |
+| 25–31 | Log, Popup „Buchung prüfen", Startbildschirm, Warten 1 s, Chrome beenden, Log | |
 
 Stempelseite hochkant/Desktop in Chrome (Pixel 8, 1080 × 2400, Screenshot × 1,2): „SORTIE HOME OFFICE" y 419–454
 (x 17–209), **„SUR SITE" ≈ 37–101 / 558–576 → Tipp 70, 567**, „HUB" ab x 158.
@@ -43,22 +39,22 @@ Gelernt (v5 + Klick-Test v1, 26.10.2026): Ein Tipp auf eine feste Stelle wirkt i
 Startseite), Klick über Text nicht. In v4/v5 kam der Tipp **nach** der Ja/Nein-Abfrage und wirkte nicht, obwohl der
 Screenshot davor kein Fenster zeigte und der Tipp genau auf „SUR SITE" saß (Schrift x 38–99, y 562–572 im
 Original-Screenshot). Vermutung: die Abfrage (MacroDroid-Activity) schluckt Tipps noch eine Weile unsichtbar →
-v6 fragt zuerst und öffnet Chrome erst danach.
+v6 fragte zuerst und öffnete Chrome erst danach; v7 fragt gar nicht mehr.
 
 ### Einrichten
 
 1. Chrome einmalig: Seite öffnen, anmelden, ⋮ → „Desktopwebsite" (erledigt 26.10.2026).
-2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v6.macro` laden → MacroDroid → ⋮ → **Import**,
+2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v7.macro` laden → MacroDroid → ⋮ → **Import**,
    ältere „Stempeln"-Fassungen löschen.
 3. MacroDroid → Variablen: **`debug`** = wahr (Screenshots an).
-4. Ausführen. Mit **„Ja"** wird echt gestempelt (ein oder aus).
+4. Ausführen = **echt stempeln** (ein oder aus).
 5. Debuggen: MacroDroid → ☰ → **Makro-Log** und die Screenshots A/B/C in den Chat. **Nie ins Repo** (Name, Zeiten).
 6. Läuft alles: `debug` = falsch.
 
-### Unsicher (v6)
+### Unsicher (v7)
 
-- Ob die Abfrage wirklich der Grund war. Wenn v6 auch nicht bucht: Klick-Test um die Abfrage erweitern.
-- Später: Start per GPS (Ankunft am Arbeitsort), dann ohne Abfrage.
+- Ob die Abfrage wirklich der Grund war. Wenn v7 auch nicht bucht: Screenshots A/B/C + Log ansehen.
+- Später: Start per GPS (Ankunft am Arbeitsort / Verlassen).
 
 ## Klick-Test v1 (`Klick-Test-v1.macro`, 26.10.2026)
 
