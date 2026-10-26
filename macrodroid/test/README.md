@@ -172,3 +172,13 @@ Ablauf (Shell-Skripte im **Root-Modus**: `m_nonRoot` false, `useShizuku` false):
 4. Startbildschirm, Chrome beenden.
 
 Danach: Wirkt ein Weg auf „Accueil" → derselbe Weg auf „SUR SITE" (68, 522) als echter Test.
+
+**Ergebnis Mi-Test v1 (22:57):** keine Root-Abfrage, keine Datei `mi-test.txt`, alle Screenshots zeigen die
+Stempelseite → **kein Root** (PixelOS ohne Magisk/KernelSU), Root-Skripte scheiterten still.
+
+## Mi-Test v2 (`Mi-Test-v2.macro`, 26.10.2026)
+
+**Stempelt nicht.** Wie Mi-Test v1, aber alle Shell-Skripte über **Shizuku** (`useShizuku` true). Datei
+`Download/mi-test2.txt`. Voraussetzung: Shizuku auf dem Mi eingerichtet und gestartet (Anleitung oben),
+MacroDroid-Zugriff erlaubt. Erwartung: unter Android 16 läuft `input tap` aus Shizuku (am Pixel scheiterte es an
+Android 17); `sendevent` vermutlich wieder „Permission denied".
