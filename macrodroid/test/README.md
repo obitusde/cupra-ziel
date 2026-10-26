@@ -120,15 +120,22 @@ Link „Accueil" (Brotkrume oben links auf der Stempelseite, wechselt zur Starts
 Auswertung: Zeigt 1b bzw. 2b die Startseite (Kästen „Timbrer", „Mes indicateurs" …), funktioniert dieser Weg →
 Stempeln v6 klickt „SUR SITE" genauso.
 
-## Shizuku-Test v1 (`Shizuku-Test-v1.macro`, 26.10.2026)
+## Shizuku-Test v2 (`Shizuku-Test-v2.macro`, 26.10.2026)
 
-**Stempelt nicht.** Klärt, ob die Shell-Skripte wirklich über Shizuku laufen und ob `input tap` in Chrome wirkt.
+**Stempelt nicht.**
 
-1. Shell (Shizuku): schreibt Datum und `id` nach `Download/shizuku-test.txt`. **`uid=2000(shell)`** = Shizuku aktiv;
-   eine App-Kennung (`uid=10…`) oder gar keine Datei = Shizuku wird nicht benutzt.
+Ergebnis v1 (15:24): `id` → **`uid=2000(shell)`**, Shizuku läuft also. Aber `input tap 94 157` →
+**`cmd: Failure calling service input: Failed transaction (2147483646)`**, Rückgabe 2 – Android lehnt den Tipp-Befehl
+über diesen Weg ab, Seite blieb auf der Stempelseite. **v12–v14 haben also nie getippt.** Die Shell-Gruppen enthalten
+`1004(input)` → Berührungen direkt an den Touchscreen-Treiber (`sendevent` auf `/dev/input/eventX`) könnten gehen.
+
+v2 schreibt nach `Download/shizuku-test2.txt`:
+1. Android-Version, Modell, `id`, Kontrolle `settings get global airplane_mode_on` (geht ein anderer Systemdienst?),
+   `service check input`, `wm size`, `ls -l /dev/input`, `timeout 5 getevent -lp` (Touchscreen-Gerät + Wertebereiche
+   für `sendevent`).
 2. Stempelseite zweimal öffnen, Screenshot 1.
-3. Shell: `input tap 94 157` (Link „Accueil", harmlos), Ergebnis und Rückgabewert in dieselbe Datei.
-4. Screenshot 2: zeigt er die **Startseite**, wirkt `input tap` in Chrome.
-5. Startbildschirm, Chrome beenden.
+3. Drei Tipp-Varianten auf „Accueil" (94, 157): `cmd input tap`, `input touchscreen tap`, `/system/bin/input tap`,
+   je mit Rückgabewert. Screenshot 2 (Startseite = eine Variante wirkt).
 
-Auswertung: Datei + Screenshot 2. Nur wenn beides passt, folgt ein echter Test auf „SUR SITE"; sonst halbautomatisch.
+Danach: Wirkt eine Variante oder lässt sich aus `getevent -lp` ein `sendevent`-Tipp bauen → **ein** Test auf
+„SUR SITE". Sonst Schluss → halbautomatisch.
