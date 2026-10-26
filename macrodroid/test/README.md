@@ -101,7 +101,8 @@ Browser per Tastatur ausgelöst, unabhängig davon, wie die Seite Berührungen a
 
 ### Unsicher (v14)
 
-- Ob der Import den Shizuku-Modus richtig setzt (Aktion muss „Shizuku" zeigen) und ob `input tap` bucht.
+- v12–v14 buchten nicht, Christof sah keinen Tipp-Kreis. Ob `input tap` überhaupt lief, ist offen (MacroDroid führt
+  Shell-Skripte stumm aus; Log 15:06 „Shizuku permission not granted" bei v12, später keine Meldung) → Shizuku-Test v1.
 - Keine Horoquartz-App verfügbar (Christof). Fallback: halbautomatisch – Makro öffnet die Seite, Christof tippt.
 - Später: Start per GPS (Ankunft am Arbeitsort / Verlassen).
 
@@ -118,3 +119,16 @@ Link „Accueil" (Brotkrume oben links auf der Stempelseite, wechselt zur Starts
 
 Auswertung: Zeigt 1b bzw. 2b die Startseite (Kästen „Timbrer", „Mes indicateurs" …), funktioniert dieser Weg →
 Stempeln v6 klickt „SUR SITE" genauso.
+
+## Shizuku-Test v1 (`Shizuku-Test-v1.macro`, 26.10.2026)
+
+**Stempelt nicht.** Klärt, ob die Shell-Skripte wirklich über Shizuku laufen und ob `input tap` in Chrome wirkt.
+
+1. Shell (Shizuku): schreibt Datum und `id` nach `Download/shizuku-test.txt`. **`uid=2000(shell)`** = Shizuku aktiv;
+   eine App-Kennung (`uid=10…`) oder gar keine Datei = Shizuku wird nicht benutzt.
+2. Stempelseite zweimal öffnen, Screenshot 1.
+3. Shell: `input tap 94 157` (Link „Accueil", harmlos), Ergebnis und Rückgabewert in dieselbe Datei.
+4. Screenshot 2: zeigt er die **Startseite**, wirkt `input tap` in Chrome.
+5. Startbildschirm, Chrome beenden.
+
+Auswertung: Datei + Screenshot 2. Nur wenn beides passt, folgt ein echter Test auf „SUR SITE"; sonst halbautomatisch.
