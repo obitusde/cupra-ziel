@@ -120,22 +120,20 @@ Link „Accueil" (Brotkrume oben links auf der Stempelseite, wechselt zur Starts
 Auswertung: Zeigt 1b bzw. 2b die Startseite (Kästen „Timbrer", „Mes indicateurs" …), funktioniert dieser Weg →
 Stempeln v6 klickt „SUR SITE" genauso.
 
-## Shizuku-Test v2 (`Shizuku-Test-v2.macro`, 26.10.2026)
+## Shizuku-Test v3 (`Shizuku-Test-v3.macro`, 26.10.2026)
 
 **Stempelt nicht.**
 
-Ergebnis v1 (15:24): `id` → **`uid=2000(shell)`**, Shizuku läuft also. Aber `input tap 94 157` →
-**`cmd: Failure calling service input: Failed transaction (2147483646)`**, Rückgabe 2 – Android lehnt den Tipp-Befehl
-über diesen Weg ab, Seite blieb auf der Stempelseite. **v12–v14 haben also nie getippt.** Die Shell-Gruppen enthalten
-`1004(input)` → Berührungen direkt an den Touchscreen-Treiber (`sendevent` auf `/dev/input/eventX`) könnten gehen.
+Ergebnis v1 (15:24): Shizuku läuft (`uid=2000(shell)`, Gruppe `1004(input)`), aber `input tap` →
+`cmd: Failure calling service input: Failed transaction (2147483646)` – **v12–v14 haben nie getippt.**
 
-v2 schreibt nach `Download/shizuku-test2.txt`:
-1. Android-Version, Modell, `id`, Kontrolle `settings get global airplane_mode_on` (geht ein anderer Systemdienst?),
-   `service check input`, `wm size`, `ls -l /dev/input`, `timeout 5 getevent -lp` (Touchscreen-Gerät + Wertebereiche
-   für `sendevent`).
-2. Stempelseite zweimal öffnen, Screenshot 1.
-3. Drei Tipp-Varianten auf „Accueil" (94, 157): `cmd input tap`, `input touchscreen tap`, `/system/bin/input tap`,
-   je mit Rückgabewert. Screenshot 2 (Startseite = eine Variante wirkt).
+Ergebnis v2 (15:38): Pixel 8, **Android 17 (SDK 37)**. Aus dem Shizuku-Prozess scheitert **jeder** `cmd`-Dienst
+(`input`, `settings`, `window`: Failed transaction), `service check input` findet den Dienst aber. Alle drei
+Schreibweisen des Tipps scheitern gleich. **`/dev/input/event3` = `goodix_ts0`** (Touchscreen, `crw-rw---- root input`),
+Protokoll B: `ABS_MT_SLOT` 0–9, `ABS_MT_TRACKING_ID`, `ABS_MT_POSITION_X` 0–1079, `ABS_MT_POSITION_Y` 0–2399
+(= Bildschirmpixel), `ABS_MT_TOUCH_MAJOR`/`MINOR`, `ABS_MT_PRESSURE` 0–255, `BTN_TOUCH`, `BTN_TOOL_FINGER`.
 
-Danach: Wirkt eine Variante oder lässt sich aus `getevent -lp` ein `sendevent`-Tipp bauen → **ein** Test auf
-„SUR SITE". Sonst Schluss → halbautomatisch.
+v3: Tipp auf „Accueil" (94, 157) **direkt am Touchscreen-Treiber** per `sendevent /dev/input/event3`
+(Slot 0, Tracking-ID, Position, Größe 40, Druck 80, `BTN_TOUCH`/`BTN_TOOL_FINGER` an, SYN – 0,1 s – Tracking-ID −1,
+Tasten aus, SYN), Fehler je Befehl in `Download/shizuku-test3.txt`. Screenshot 2 zeigt die Startseite = es geht →
+derselbe Tipp auf „SUR SITE" (70, 567). Sonst Schluss → halbautomatisch.
