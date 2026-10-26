@@ -4,7 +4,7 @@ Hier liegen Makros, die nichts mit Cupra-Ziel zu tun haben und nur zum Ausprobie
 Wenn sie laufen, zieht Christof sie in ein eigenes Repo um. **Nichts Persönliches in die Dateien** (Adressen,
 Namen, Zugangsdaten): Solche Werte stehen nur in MacroDroid-Variablen auf dem Handy.
 
-## Stempeln v9 (`Stempeln-v9.macro`, 26.10.2026)
+## Stempeln v10 (`Stempeln-v10.macro`, 26.10.2026)
 
 Stempelt in der Zeiterfassung „SUR SITE" (schaltet je nach Stand **ein oder aus**, bucht sofort, ohne Bestätigung –
 Christof 26.10.2026). Von Hand starten. **Keine Ja/Nein-Abfrage mehr** (Christof 26.10.2026: „ganz raus") –
@@ -20,7 +20,8 @@ Firefox merkt sich das nur pro Tab, Chrome pro Seite (bei Christof eingerichtet)
 |---|---|---|
 | 1–4 | Log, Intent (Activity), Warten 7 s | VIEW `…/ux/clock`, Paket `com.android.chrome`, Extra `com.android.browser.application_id` = `macrodroid.stempeln` (immer derselbe Tab) |
 | 5–10 | Log, wenn `debug`: Screenshot **A** | vor der Geste |
-| 11–13 | Log, UI-Interaktion **Geste 200 ms** auf **70, 567** (Start = Ende) = „SUR SITE", Warten 3 s | `action` 6, `type` „Gesture", `durationMs`, `startX`/`startY`/`endX`/`endY` |
+| 11–12 | Log, UI-Interaktion **Geste 200 ms** auf **70, 567** (Start = Ende) = „SUR SITE" | `action` 6, `type` „Gesture", `durationMs`, `startX`/`startY`/`endX`/`endY` – setzt den Fokus |
+| 13–16 | Warten 1 s, Log, UI-Klick **„aktueller Fokus"**, Warten 3 s | `action` 0, `clickOption` 0 (Bedienungshilfe-Klick auf das fokussierte Element) |
 | 14–18 | wenn `debug`: Screenshot **B** | 3 s nach der Geste (zeigt die Buchung noch **nicht**) |
 | 19–21 | Log, gleicher Intent noch einmal, Warten 7 s | lädt die Seite im selben Tab neu |
 | 22–26 | wenn `debug`: Screenshot **C** | **nach dem Neuladen: neue Buchung in der Agenda sichtbar?** |
@@ -52,17 +53,21 @@ bleibt die Agenda gleich; der rote Strich in der Agenda ist nur die aktuelle Uhr
 Buchung: v5 (13:22) und v7 (13:57). v8 (Geste 14:14:51) unklar: es gibt genau eine Buchung ← 14:15, Christof tippte
 kurz danach auch von Hand. → v9: Geste 200 ms, danach Seite neu laden und Screenshot C.
 
+Gelernt (v9, 26.10.2026): Geste 200 ms bucht nicht (nach Neuladen keine neue Buchung). Ein Screenshot (14:17) zeigt
+um „SUR SITE" den **Fokus-Rahmen** (x 18–120, y 551–585 → Tipp 70, 567 sitzt mittig): der künstliche Tipp wählt den
+Knopf an, löst ihn aber nicht aus. → v10: danach „Klick auf aktuellen Fokus" (Bedienungshilfe-Klick).
+
 ### Einrichten
 
 1. Chrome einmalig: Seite öffnen, anmelden, ⋮ → „Desktopwebsite" (erledigt 26.10.2026).
-2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v9.macro` laden → MacroDroid → ⋮ → **Import**,
+2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v10.macro` laden → MacroDroid → ⋮ → **Import**,
    ältere „Stempeln"-Fassungen löschen.
 3. MacroDroid → Variablen: **`debug`** = wahr (Screenshots an).
 4. Ausführen = **echt stempeln** (ein oder aus).
 5. Debuggen: MacroDroid → ☰ → **Makro-Log** und die Screenshots A/B/C in den Chat. **Nie ins Repo** (Name, Zeiten).
 6. Läuft alles: `debug` = falsch.
 
-### Unsicher (v9)
+### Unsicher (v10)
 
 - Import der Geste klappt (26.10.2026). Offen: ob sie bucht – Screenshot C zeigt es. Ob der zweite Intent die Seite
   wirklich neu lädt (sonst C = B).
