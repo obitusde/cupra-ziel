@@ -58,7 +58,7 @@ Problem → v8: Geste mit 150 ms Druckdauer.
 
 ### Unsicher (v8)
 
-- Ob die Geste importiert wird (sonst in MacroDroid: Aktion → UI-Interaktion → Geste, 150 ms, 70,567 → 70,567) und ob sie bucht.
+- Import der Geste klappt (MacroDroid zeigt „Gesture (150 ms: 70,567 -> 70,567)", 26.10.2026). Offen: ob sie bucht.
 - Später: Start per GPS (Ankunft am Arbeitsort / Verlassen).
 
 ## Klick-Test v1 (`Klick-Test-v1.macro`, 26.10.2026)
