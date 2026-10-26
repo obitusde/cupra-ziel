@@ -212,3 +212,7 @@ unter `/sdcard` (bzw. bei v12–v14 vermutlich an MacroDroids Ausgabe-Kanal – 
 **Stempelt nicht.** Wie Mi-Test v3, für das Pixel 8: `wm size` auf drei Arten, dann Shizuku-`input tap 94 157`
 („Accueil" auf dem Pixel) mit Ausgabe nach `/dev/null`, Screenshot 2. Datei `Download/pixel-test.txt`. Startseite auf
 Screenshot 2 → am Pixel geht der Tipp auch → Stempeln v15 beim nächsten echten Stempeln.
+
+**Ergebnis Pixel-Test v1 (23:22): klappt auch am Pixel.** Gleiches Muster wie am Mi (A „Failed transaction",
+B `rc=0 Physical size: 1080x2400`, C `rc=0`), `input tap 94 157` → `rc=0`, Screenshot zeigt die Startseite.
+(Shizuku fragte nicht erneut nach Zugriff – MacroDroid war noch autorisiert.) → Stempeln v15 am Pixel ist der echte Test.
