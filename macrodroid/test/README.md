@@ -155,3 +155,20 @@ Vollautomatisches Stempeln auf diesem Weg geht auf dem Pixel 8 mit Android 17 **
 
 Nächster Schritt: **halbautomatisch** – Makro öffnet die Stempelseite (später per GPS mit Hinweis), Christof tippt
 „SUR SITE" selbst.
+
+## Mi-Test v1 (`Mi-Test-v1.macro`, 26.10.2026) – zweites Handy
+
+**Stempelt nicht.** Gerät: **Xiaomi Mi 9T (davinci), PixelOS 16.2 (Android 16), 1080 × 2340**, vermutlich gerootet.
+Stempelseite dort (Chrome, Desktopwebsite, hochkant; Screenshot in Originalgröße vermessen): „Accueil" x 71–116,
+y 107–119 → **94, 113**; „ENTRÉE/SORTIE HOME OFFICE" y 374–408; **„SUR SITE" x 38–99, y 517–527 → 68, 522**;
+„HUB" ab x 158.
+
+Ablauf (Shell-Skripte im **Root-Modus**: `m_nonRoot` false, `useShizuku` false):
+1. Diagnose nach `Download/mi-test.txt`: `id` (**`uid=0` = Root**), Modell, Android, `wm size`, `/dev/input`,
+   `getevent -lp`. Keine Datei = kein Root (oder Root-Abfrage abgelehnt).
+2. Stempelseite zweimal öffnen, Screenshot 1 → `input tap 94 113` (Root) → Screenshot 2 (Startseite?).
+3. Stempelseite wieder öffnen, Screenshot 3 → Tipp **direkt am Touchscreen** per `sendevent` (Gerät und Wertebereich
+   werden aus `getevent -lp` gesucht und umgerechnet) → Screenshot 4 (Startseite?).
+4. Startbildschirm, Chrome beenden.
+
+Danach: Wirkt ein Weg auf „Accueil" → derselbe Weg auf „SUR SITE" (68, 522) als echter Test.
