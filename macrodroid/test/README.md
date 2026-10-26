@@ -4,7 +4,7 @@ Hier liegen Makros, die nichts mit Cupra-Ziel zu tun haben und nur zum Ausprobie
 Wenn sie laufen, zieht Christof sie in ein eigenes Repo um. **Nichts Persönliches in die Dateien** (Adressen,
 Namen, Zugangsdaten): Solche Werte stehen nur in MacroDroid-Variablen auf dem Handy.
 
-## Stempeln v10 (`Stempeln-v10.macro`, 26.10.2026)
+## Stempeln v11 (`Stempeln-v11.macro`, 26.10.2026)
 
 Stempelt in der Zeiterfassung „SUR SITE" (schaltet je nach Stand **ein oder aus**, bucht sofort, ohne Bestätigung –
 Christof 26.10.2026). Von Hand starten. **Keine Ja/Nein-Abfrage mehr** (Christof 26.10.2026: „ganz raus") –
@@ -19,13 +19,12 @@ Firefox merkt sich das nur pro Tab, Chrome pro Seite (bei Christof eingerichtet)
 | # | Aktion | Wert |
 |---|---|---|
 | 1–4 | Log, Intent (Activity), Warten 7 s | VIEW `…/ux/clock`, Paket `com.android.chrome`, Extra `com.android.browser.application_id` = `macrodroid.stempeln` (immer derselbe Tab) |
-| 5–10 | Log, wenn `debug`: Screenshot **A** | vor der Geste |
-| 11–12 | Log, UI-Interaktion **Geste 200 ms** auf **70, 567** (Start = Ende) = „SUR SITE" | `action` 6, `type` „Gesture", `durationMs`, `startX`/`startY`/`endX`/`endY` – setzt den Fokus |
-| 13–16 | Warten 1 s, Log, UI-Klick **„aktueller Fokus"**, Warten 3 s | `action` 0, `clickOption` 0 (Bedienungshilfe-Klick auf das fokussierte Element) |
-| 14–18 | wenn `debug`: Screenshot **B** | 3 s nach der Geste (zeigt die Buchung noch **nicht**) |
-| 19–21 | Log, gleicher Intent noch einmal, Warten 7 s | lädt die Seite im selben Tab neu |
-| 22–26 | wenn `debug`: Screenshot **C** | **nach dem Neuladen: neue Buchung in der Agenda sichtbar?** |
-| 27–33 | Log, Popup, Startbildschirm, Warten 1 s, Chrome beenden, Log | |
+| 5–10 | Log, wenn `debug`: Screenshot **A** | vor dem Tipp |
+| 11–12 | Log, UI-Klick (x,y) **70, 567** = „SUR SITE" | einfacher Tipp wie „Accueil" im Klick-Test |
+| 13–16 | Popup, Log, **2 × 30 s warten** | Chrome bleibt offen, nichts neu laden/beenden |
+| 17–19 | Log, gleicher Intent, Warten 7 s | Seite neu laden |
+| 20–24 | wenn `debug`: Screenshot **C** | Agenda nach 60 s + Neuladen |
+| 25–30 | Log, Startbildschirm, Warten 1 s, Chrome beenden, Popup, Log | |
 
 Stempelseite hochkant/Desktop in Chrome (Pixel 8, 1080 × 2400, Screenshot × 1,2): „SORTIE HOME OFFICE" y 419–454
 (x 17–209), **„SUR SITE" ≈ 37–101 / 558–576 → Tipp 70, 567**, „HUB" ab x 158.
@@ -57,20 +56,28 @@ Gelernt (v9, 26.10.2026): Geste 200 ms bucht nicht (nach Neuladen keine neue Buc
 um „SUR SITE" den **Fokus-Rahmen** (x 18–120, y 551–585 → Tipp 70, 567 sitzt mittig): der künstliche Tipp wählt den
 Knopf an, löst ihn aber nicht aus. → v10: danach „Klick auf aktuellen Fokus" (Bedienungshilfe-Klick).
 
+Gelernt (v10, 26.10.2026): bucht auch nicht. **Neu durchdacht:** Gemeinsam ist v5–v10, dass Chrome 3–12 s nach dem
+Tipp neu geladen (v9/v10, nach 3–4 s) oder beendet wurde (v5/v7/v8, nach ~10 s). v4 (12:09, Chrome blieb offen) und
+v8 (Geste 14:14:51, Chrome erst 14:15:03 beendet) fallen zeitlich genau mit den Buchungen ← 12:09 und ← 14:15 zusammen,
+die Christof seinem Finger zuschrieb (die Seite zeigt Buchungen erst nach Neuladen, er hat jeweils kurz danach von
+Hand nachgetippt). Vermutung: „SUR SITE" holt erst den **Standort** (Horoquartz wirbt mit geolokalisiertem Stempeln)
+und bucht erst danach; Neuladen/Beenden bricht das ab. Der Finger lässt die Seite offen. → v11: einfacher Tipp,
+**60 s Chrome offen lassen**, erst dann neu laden.
+
 ### Einrichten
 
 1. Chrome einmalig: Seite öffnen, anmelden, ⋮ → „Desktopwebsite" (erledigt 26.10.2026).
-2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v10.macro` laden → MacroDroid → ⋮ → **Import**,
+2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v11.macro` laden → MacroDroid → ⋮ → **Import**,
    ältere „Stempeln"-Fassungen löschen.
 3. MacroDroid → Variablen: **`debug`** = wahr (Screenshots an).
 4. Ausführen = **echt stempeln** (ein oder aus).
 5. Debuggen: MacroDroid → ☰ → **Makro-Log** und die Screenshots A/B/C in den Chat. **Nie ins Repo** (Name, Zeiten).
 6. Läuft alles: `debug` = falsch.
 
-### Unsicher (v10)
+### Unsicher (v11)
 
-- Import der Geste klappt (26.10.2026). Offen: ob sie bucht – Screenshot C zeigt es. Ob der zweite Intent die Seite
-  wirklich neu lädt (sonst C = B).
+- Ob die Standort-Vermutung stimmt. Wenn v11 nicht bucht: nicht weiter am Tipp drehen, sondern anderer Weg
+  (Shell `input tap` über Shizuku = echter Eingabeweg wie der Finger, oder Horoquartz-App statt Webseite).
 - Später: Start per GPS (Ankunft am Arbeitsort / Verlassen).
 
 ## Klick-Test v1 (`Klick-Test-v1.macro`, 26.10.2026)
