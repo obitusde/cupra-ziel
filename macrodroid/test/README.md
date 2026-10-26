@@ -4,36 +4,30 @@ Hier liegen Makros, die nichts mit Cupra-Ziel zu tun haben und nur zum Ausprobie
 Wenn sie laufen, zieht Christof sie in ein eigenes Repo um. **Nichts Persönliches in die Dateien** (Adressen,
 Namen, Zugangsdaten): Solche Werte stehen nur in MacroDroid-Variablen auf dem Handy.
 
-## Stempeln v5 (`Stempeln-v5.macro`, 26.10.2026)
+## Stempeln v6 (`Stempeln-v6.macro`, 26.10.2026)
 
-Stempelt in der Zeiterfassung „SUR SITE". Von Hand starten.
+Stempelt in der Zeiterfassung „SUR SITE" (schaltet je nach Stand **ein oder aus**, bucht sofort, ohne Bestätigung –
+Christof 26.10.2026). Von Hand starten.
 
 **Adresse fest im Makro** (Christof 26.10.2026: „mach Makro jetzt mit der URL, später lösche ich das aus dem Repo"):
-direkt die Stempelseite `…/webquartz/ux/clock` (Christof 26.10.2026: geht direkt auf).
+direkt die Stempelseite `…/webquartz/ux/clock`.
 
 **Warum Chrome:** Die Seite zeigt hochkant nur „bitte drehen". Mit „Desktop-Website" klappt es hochkant.
-Firefox merkt sich das nur pro Tab (neuer Tab vom Makro = wieder mobil), Chrome pro Seite (bei Christof
-26.10.2026 eingerichtet, öffnet direkt als Desktop). Firefox bleibt Standard-Browser. Drehen per
-`ForceScreenRotationAction` (v1) hat nichts bewirkt → entfernt.
+Firefox merkt sich das nur pro Tab, Chrome pro Seite (bei Christof eingerichtet). Firefox bleibt Standard-Browser.
 
 | # | Aktion | Wert |
 |---|---|---|
-| 1 | Log | `Stempeln v5 \| 1 Start, debug=…` |
-| 2 | Intent (Activity) | VIEW, `…/ux/clock`, Paket `com.android.chrome`, Extra `com.android.browser.application_id` = `macrodroid.stempeln` (Chrome nimmt immer denselben Tab) |
-| 3–5 | Log, Warten 7 s, Log | Vordergrund-App `{fg_app_name}` |
-| 6–10 | Wenn `debug` | Screenshot **A** (Stempelseite) |
-| 11 | Variable `stempeln` mit Abfrage | „Ja, SUR SITE stempeln" / „Nein, nicht stempeln" |
-| 12 | Log | Antwort |
-| 13 | Wenn `stempeln` | |
-| 14–15 | Log, Warten 2 s | Abfrage-Fenster muss weg sein |
-| 16–20 | Wenn `debug` | Screenshot **B** (vor dem Tipp) |
-| 21–23 | Log, UI-Klick (x,y) **70, 567** = „SUR SITE", Warten 3 s | |
-| 24–28 | Wenn `debug` | Screenshot **C** (nach SUR SITE) |
-| 29–30 | Log, Popup | „Gestempelt: SUR SITE" |
-| 31–33 | Sonst: Log, Popup | „Nicht gestempelt" |
-| 34 | Ende Wenn | |
-| 35–38 | Log, Startbildschirm, Warten 1 s, Hintergrundprozess beenden | Chrome |
-| 39 | Log | `7 Ende` |
+| 1 | Log | Start |
+| 2–3 | Variable `stempeln` mit Abfrage, Log | **zuerst**, bevor Chrome aufgeht |
+| 4 | Wenn `stempeln` | |
+| 5–7 | Log, Intent (Activity), Warten 7 s | VIEW `…/ux/clock`, Paket `com.android.chrome`, Extra `com.android.browser.application_id` = `macrodroid.stempeln` (immer derselbe Tab) |
+| 8–13 | Log, wenn `debug`: Screenshot **A** | Stempelseite vor dem Tipp |
+| 14–16 | Log, UI-Klick (x,y) **70, 567** = „SUR SITE", Warten 3 s | |
+| 17–21 | wenn `debug`: Screenshot **B** | 3 s nach dem Tipp |
+| 22–27 | Warten 5 s, wenn `debug`: Screenshot **C** | 9 s nach dem Tipp |
+| 28–33 | Log, Popup „bitte Buchung prüfen", Startbildschirm, Warten 1 s, Chrome beenden | |
+| 34–36 | Sonst: Log, Popup „Nicht gestempelt" | Chrome wird gar nicht geöffnet |
+| 37–38 | Ende Wenn, Log | |
 
 Stempelseite hochkant/Desktop in Chrome (Pixel 8, 1080 × 2400, Screenshot × 1,2): „SORTIE HOME OFFICE" y 419–454
 (x 17–209), **„SUR SITE" ≈ 37–101 / 558–576 → Tipp 70, 567**, „HUB" ab x 158.
@@ -45,25 +39,26 @@ Gelernt (v3, 26.10.2026): Text-Klick mit Regex `(?i)^\s*tout voir\s*$` in Chrome
 Gelernt (v4, 26.10.2026): Tipp auf 70, 567 war sichtbar, stempelte aber nicht. Vermutung: kam direkt nach dem
 Schließen der Ja/Nein-Abfrage (MacroDroid-Fenster noch im Vordergrund) → v5 wartet 2 s und macht Screenshot B davor.
 
+Gelernt (v5 + Klick-Test v1, 26.10.2026): Ein Tipp auf eine feste Stelle wirkt in Chrome (Klick-Test: „Accueil" →
+Startseite), Klick über Text nicht. In v4/v5 kam der Tipp **nach** der Ja/Nein-Abfrage und wirkte nicht, obwohl der
+Screenshot davor kein Fenster zeigte und der Tipp genau auf „SUR SITE" saß (Schrift x 38–99, y 562–572 im
+Original-Screenshot). Vermutung: die Abfrage (MacroDroid-Activity) schluckt Tipps noch eine Weile unsichtbar →
+v6 fragt zuerst und öffnet Chrome erst danach.
+
 ### Einrichten
 
 1. Chrome einmalig: Seite öffnen, anmelden, ⋮ → „Desktopwebsite" (erledigt 26.10.2026).
-2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v5.macro` laden → MacroDroid → ⋮ → **Import**,
+2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v6.macro` laden → MacroDroid → ⋮ → **Import**,
    ältere „Stempeln"-Fassungen löschen.
 3. MacroDroid → Variablen: **`debug`** = wahr (Screenshots an).
-4. Ausführen (Makro-Liste ⋮ → „Ausführen"). Mit **„Ja"** wird echt gestempelt.
-5. Debuggen: MacroDroid → ☰ → **Makro-Log** (Einträge „Stempeln v5 | …") und die Screenshots in den Chat.
-   **Nie ins Repo** (Name, Zeiten).
+4. Ausführen. Mit **„Ja"** wird echt gestempelt (ein oder aus).
+5. Debuggen: MacroDroid → ☰ → **Makro-Log** und die Screenshots A/B/C in den Chat. **Nie ins Repo** (Name, Zeiten).
 6. Läuft alles: `debug` = falsch.
 
-### Unsicher (v5)
+### Unsicher (v6)
 
-- („SUR SITE" bucht sofort, ohne Bestätigung – Christof 26.10.2026.)
-- **v5-Test 26.10.2026 13:22:** Ablauf laut Log korrekt, Screenshot vor dem Tipp ohne Abfrage-Fenster, Tipp 70, 567
-  ausgeführt – trotzdem keine Buchung (Bilder vor/nach gleich). Timing war es also nicht. `application_id` wirkt
-  (Tab-Zahl blieb 5), Chrome beenden klappt. → Klick-Test v1.
-- Ob Chrome mit `application_id` wirklich denselben Tab nimmt (Tab-Zahl darf nicht mehr steigen).
-- Später: Start per GPS (Ankunft am Arbeitsort).
+- Ob die Abfrage wirklich der Grund war. Wenn v6 auch nicht bucht: Klick-Test um die Abfrage erweitern.
+- Später: Start per GPS (Ankunft am Arbeitsort), dann ohne Abfrage.
 
 ## Klick-Test v1 (`Klick-Test-v1.macro`, 26.10.2026)
 
