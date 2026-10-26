@@ -4,7 +4,7 @@ Hier liegen Makros, die nichts mit Cupra-Ziel zu tun haben und nur zum Ausprobie
 Wenn sie laufen, zieht Christof sie in ein eigenes Repo um. **Nichts Persönliches in die Dateien** (Adressen,
 Namen, Zugangsdaten): Solche Werte stehen nur in MacroDroid-Variablen auf dem Handy.
 
-## Stempeln v13 (`Stempeln-v13.macro`, 26.10.2026)
+## Stempeln v14 (`Stempeln-v14.macro`, 26.10.2026)
 
 Stempelt in der Zeiterfassung „SUR SITE" (schaltet je nach Stand **ein oder aus**, bucht sofort, ohne Bestätigung –
 Christof 26.10.2026). Von Hand starten. **Keine Ja/Nein-Abfrage mehr** (Christof 26.10.2026: „ganz raus") –
@@ -20,7 +20,7 @@ Firefox merkt sich das nur pro Tab, Chrome pro Seite (bei Christof eingerichtet)
 |---|---|---|
 | 1–7 | Log, Intent (Activity), Warten 7 s, Log, **gleicher Intent noch einmal**, Warten 6 s | VIEW `…/ux/clock`, Paket `com.android.chrome`, Extra `com.android.browser.application_id` = `macrodroid.stempeln` (immer derselbe Tab) |
 | 5–10 | Log, wenn `debug`: Screenshot **A** | vor dem Tipp |
-| 11–12 | Log, **Shell-Skript über Shizuku** `input tap 70 567` | `ShellScriptAction`: `m_script`, `useShizuku` true, `m_nonRoot` false, `blockNextAction` true, `timeoutSeconds` 10 (Felder aus Beispiel in BespredeL/MacroDroid; Shizuku-Modus geraten) |
+| 11–12 | Log, **Shell-Skript über Shizuku** `input tap 70 567` · `sleep 1` · `input keyevent 66` (Enter) | `ShellScriptAction`: `m_script`, `useShizuku` true, `m_nonRoot` false, `blockNextAction` true, `timeoutSeconds` 10 (Felder aus Beispiel in BespredeL/MacroDroid; Shizuku-Modus geraten) |
 | 13–17 | Log, Warten 5 s, Log, gleicher Intent, Warten 7 s | Seite neu laden |
 | 18–22 | wenn `debug`: Screenshot **C** | Agenda nach Neuladen |
 | 23–28 | Log, Startbildschirm, Warten 1 s, Chrome beenden, Popup, Log | |
@@ -84,17 +84,22 @@ Startseite), der Tipp ging ins Leere; nach dem Neuladen war die Stempelseite da.
 Zweites Öffnen landete bisher immer auf der Stempelseite (Klick-Test 2a, v9–v12 Screenshot C) → v13 öffnet zweimal.
 (Zeilennummern der Tabelle ab Aktion 8 um 3 verschoben.)
 
+Gelernt (v13, 26.10.2026, 15:12): Stempelseite war offen (Screenshot A), Shizuku-`input tap` bucht trotzdem nicht.
+Gemeinsam bei allen künstlichen Tipps: sie setzen höchstens den Fokus (blauer Rahmen), lösen aber nicht aus; Finger
+und PC-Maus schon. → v14: nach dem Tipp **Enter-Taste** (`input keyevent 66`) – ein fokussierter `<button>` wird vom
+Browser per Tastatur ausgelöst, unabhängig davon, wie die Seite Berührungen auswertet.
+
 ### Einrichten
 
 1. Chrome einmalig: Seite öffnen, anmelden, ⋮ → „Desktopwebsite" (erledigt 26.10.2026).
-2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v13.macro` laden → MacroDroid → ⋮ → **Import**,
+2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v14.macro` laden → MacroDroid → ⋮ → **Import**,
    ältere „Stempeln"-Fassungen löschen.
 3. MacroDroid → Variablen: **`debug`** = wahr (Screenshots an).
 4. Ausführen = **echt stempeln** (ein oder aus).
 5. Debuggen: MacroDroid → ☰ → **Makro-Log** und die Screenshots A/B/C in den Chat. **Nie ins Repo** (Name, Zeiten).
 6. Läuft alles: `debug` = falsch.
 
-### Unsicher (v13)
+### Unsicher (v14)
 
 - Ob der Import den Shizuku-Modus richtig setzt (Aktion muss „Shizuku" zeigen) und ob `input tap` bucht.
 - Keine Horoquartz-App verfügbar (Christof). Fallback: halbautomatisch – Makro öffnet die Seite, Christof tippt.
