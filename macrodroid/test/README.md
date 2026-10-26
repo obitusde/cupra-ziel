@@ -4,7 +4,7 @@ Hier liegen Makros, die nichts mit Cupra-Ziel zu tun haben und nur zum Ausprobie
 Wenn sie laufen, zieht Christof sie in ein eigenes Repo um. **Nichts Persönliches in die Dateien** (Adressen,
 Namen, Zugangsdaten): Solche Werte stehen nur in MacroDroid-Variablen auf dem Handy.
 
-## Stempeln v11 (`Stempeln-v11.macro`, 26.10.2026)
+## Stempeln v12 (`Stempeln-v12.macro`, 26.10.2026)
 
 Stempelt in der Zeiterfassung „SUR SITE" (schaltet je nach Stand **ein oder aus**, bucht sofort, ohne Bestätigung –
 Christof 26.10.2026). Von Hand starten. **Keine Ja/Nein-Abfrage mehr** (Christof 26.10.2026: „ganz raus") –
@@ -20,11 +20,21 @@ Firefox merkt sich das nur pro Tab, Chrome pro Seite (bei Christof eingerichtet)
 |---|---|---|
 | 1–4 | Log, Intent (Activity), Warten 7 s | VIEW `…/ux/clock`, Paket `com.android.chrome`, Extra `com.android.browser.application_id` = `macrodroid.stempeln` (immer derselbe Tab) |
 | 5–10 | Log, wenn `debug`: Screenshot **A** | vor dem Tipp |
-| 11–12 | Log, UI-Klick (x,y) **70, 567** = „SUR SITE" | einfacher Tipp wie „Accueil" im Klick-Test |
-| 13–16 | Popup, Log, **2 × 30 s warten** | Chrome bleibt offen, nichts neu laden/beenden |
-| 17–19 | Log, gleicher Intent, Warten 7 s | Seite neu laden |
-| 20–24 | wenn `debug`: Screenshot **C** | Agenda nach 60 s + Neuladen |
-| 25–30 | Log, Startbildschirm, Warten 1 s, Chrome beenden, Popup, Log | |
+| 11–12 | Log, **Shell-Skript über Shizuku** `input tap 70 567` | `ShellScriptAction`: `m_script`, `useShizuku` true, `m_nonRoot` false, `blockNextAction` true, `timeoutSeconds` 10 (Felder aus Beispiel in BespredeL/MacroDroid; Shizuku-Modus geraten) |
+| 13–17 | Log, Warten 5 s, Log, gleicher Intent, Warten 7 s | Seite neu laden |
+| 18–22 | wenn `debug`: Screenshot **C** | Agenda nach Neuladen |
+| 23–28 | Log, Startbildschirm, Warten 1 s, Chrome beenden, Popup, Log | |
+
+### Shizuku einrichten (einmalig, ohne PC)
+
+1. Play Store: **Shizuku** installieren.
+2. Einstellungen → System → Entwickleroptionen → **Kabelloses Debugging** an (Handy im WLAN).
+3. Shizuku öffnen → „Über kabelloses Debugging starten" → **Kopplung**. Dann in „Kabelloses Debugging" →
+   „Gerät über Kopplungscode koppeln" → den Code in die Shizuku-Benachrichtigung eingeben.
+4. In Shizuku **Starten** → oben „Shizuku läuft".
+5. MacroDroid fragt beim ersten Shell-Skript nach Shizuku-Zugriff → erlauben (oder in Shizuku unter
+   „Autorisierte Anwendungen" MacroDroid einschalten).
+6. **Nach jedem Neustart des Handys:** Shizuku öffnen → Starten (WLAN + Kabelloses Debugging nötig).
 
 Stempelseite hochkant/Desktop in Chrome (Pixel 8, 1080 × 2400, Screenshot × 1,2): „SORTIE HOME OFFICE" y 419–454
 (x 17–209), **„SUR SITE" ≈ 37–101 / 558–576 → Tipp 70, 567**, „HUB" ab x 158.
@@ -64,20 +74,25 @@ Hand nachgetippt). Vermutung: „SUR SITE" holt erst den **Standort** (Horoquart
 und bucht erst danach; Neuladen/Beenden bricht das ab. Der Finger lässt die Seite offen. → v11: einfacher Tipp,
 **60 s Chrome offen lassen**, erst dann neu laden.
 
+Gelernt (v11, 26.10.2026): bucht auch nicht. Am PC mit der Maus erscheint die Buchung sofort → keine Wartezeit,
+Standort-Vermutung falsch. Fazit: Tipps über die Bedienungshilfe (Klick, Geste, Fokus-Klick) lösen diesen Knopf
+nicht aus, einen Link schon; Ursache von außen nicht feststellbar. → v12: Tipp über die System-Eingabe
+(`input tap` per Shizuku), derselbe Weg wie ein Finger.
+
 ### Einrichten
 
 1. Chrome einmalig: Seite öffnen, anmelden, ⋮ → „Desktopwebsite" (erledigt 26.10.2026).
-2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v11.macro` laden → MacroDroid → ⋮ → **Import**,
+2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v12.macro` laden → MacroDroid → ⋮ → **Import**,
    ältere „Stempeln"-Fassungen löschen.
 3. MacroDroid → Variablen: **`debug`** = wahr (Screenshots an).
 4. Ausführen = **echt stempeln** (ein oder aus).
 5. Debuggen: MacroDroid → ☰ → **Makro-Log** und die Screenshots A/B/C in den Chat. **Nie ins Repo** (Name, Zeiten).
 6. Läuft alles: `debug` = falsch.
 
-### Unsicher (v11)
+### Unsicher (v12)
 
-- Ob die Standort-Vermutung stimmt. Wenn v11 nicht bucht: nicht weiter am Tipp drehen, sondern anderer Weg
-  (Shell `input tap` über Shizuku = echter Eingabeweg wie der Finger, oder Horoquartz-App statt Webseite).
+- Ob der Import den Shizuku-Modus richtig setzt (Aktion muss „Shizuku" zeigen) und ob `input tap` bucht.
+- Keine Horoquartz-App verfügbar (Christof). Fallback: halbautomatisch – Makro öffnet die Seite, Christof tippt.
 - Später: Start per GPS (Ankunft am Arbeitsort / Verlassen).
 
 ## Klick-Test v1 (`Klick-Test-v1.macro`, 26.10.2026)
