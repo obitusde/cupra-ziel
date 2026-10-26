@@ -182,3 +182,19 @@ Stempelseite → **kein Root** (PixelOS ohne Magisk/KernelSU), Root-Skripte sche
 `Download/mi-test2.txt`. Voraussetzung: Shizuku auf dem Mi eingerichtet und gestartet (Anleitung oben),
 MacroDroid-Zugriff erlaubt. Erwartung: unter Android 16 läuft `input tap` aus Shizuku (am Pixel scheiterte es an
 Android 17); `sendevent` vermutlich wieder „Permission denied".
+
+**Ergebnis Mi-Test v2 (23:08):** Shizuku läuft (`uid=2000(shell)`), Android 16 – aber **derselbe Fehler wie am
+Pixel**: `wm size` und `input tap` → „Failed transaction", `sendevent` auf `/dev/input/event2` (`goodix_ts`,
+0–1079 × 0–2339) → „Permission denied". **Die Android-17-Erklärung war falsch.**
+
+## Mi-Test v3 (`Mi-Test-v3.macro`, 26.10.2026)
+
+**Stempelt nicht.** Neue Vermutung: Alle `cmd`-Befehle (`input`, `wm`, `settings`) reichen ihre Ausgabe-Kanäle an
+den Systemdienst weiter. In allen Tests war die Ausgabe **direkt in eine Datei unter `/sdcard/Download`** umgeleitet –
+diese Datei darf `system_server` nicht benutzen → Binder-Aufruf scheitert mit „Failed transaction". Befehle ohne
+Systemdienst (`id`, `getevent`) liefen.
+
+v3 schreibt nach `Download/mi-test3.txt`: `wm size` (A) mit Ausgabe in die Datei, (B) über eine Shell-Variable,
+(C) nach `/dev/null`; dann `input tap 94 113` (Accueil) mit Ausgabe nach `/dev/null`, Rückgabewert in die Datei,
+Screenshot 2. A scheitert, B/C klappen und Screenshot 2 zeigt die Startseite = Vermutung bestätigt → echter Test auf
+„SUR SITE" (Mi: 68, 522), Skripte ohne Datei-Umleitung.
