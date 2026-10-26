@@ -206,3 +206,9 @@ Shizuku-Fehlschläge (Pixel v12–v14, Shizuku-Test v1/v2, Mi-Test v2) lagen an 
 unter `/sdcard` (bzw. bei v12–v14 vermutlich an MacroDroids Ausgabe-Kanal – nie geprüft).
 **Regel: `cmd`-Befehle (`input`, `wm`, `settings`, …) aus Shizuku immer mit `</dev/null >/dev/null 2>&1` oder über
 `$(…)` aufrufen.** → Stempeln Mi v1 / Stempeln v15 (Pixel): echter Test auf „SUR SITE".
+
+## Pixel-Test v1 (`Pixel-Test-v1.macro`, 26.10.2026)
+
+**Stempelt nicht.** Wie Mi-Test v3, für das Pixel 8: `wm size` auf drei Arten, dann Shizuku-`input tap 94 157`
+(„Accueil" auf dem Pixel) mit Ausgabe nach `/dev/null`, Screenshot 2. Datei `Download/pixel-test.txt`. Startseite auf
+Screenshot 2 → am Pixel geht der Tipp auch → Stempeln v15 beim nächsten echten Stempeln.
