@@ -137,3 +137,21 @@ v3: Tipp auf „Accueil" (94, 157) **direkt am Touchscreen-Treiber** per `sendev
 (Slot 0, Tracking-ID, Position, Größe 40, Druck 80, `BTN_TOUCH`/`BTN_TOOL_FINGER` an, SYN – 0,1 s – Tracking-ID −1,
 Tasten aus, SYN), Fehler je Befehl in `Download/shizuku-test3.txt`. Screenshot 2 zeigt die Startseite = es geht →
 derselbe Tipp auf „SUR SITE" (70, 567). Sonst Schluss → halbautomatisch.
+
+**Ergebnis v3 (15:45): `sendevent: /dev/input/event3: Permission denied`** bei jedem Befehl – trotz Gruppe `input`
+blockiert Android (SELinux) das Schreiben auf den Touchscreen aus Shizuku. Seite blieb auf der Stempelseite.
+
+## Fazit (26.10.2026)
+
+Vollautomatisches Stempeln auf diesem Weg geht auf dem Pixel 8 mit Android 17 **nicht**:
+- Tipps über die Bedienungshilfe (Klick, Geste, Fokus-Klick, Text-Klick) wählen „SUR SITE" höchstens an, lösen ihn
+  aber nicht aus (Links wie „Accueil" schon). Bekanntes Muster bei Android-Chrome (Buttons vs. Links).
+- Shizuku läuft (uid 2000), aber unter Android 17 scheitert daraus jeder `cmd`-Dienst (`input tap`, `input keyevent`,
+  `settings`, `wm`: „Failed transaction"), und `sendevent` auf den Touchscreen wird verweigert.
+- Nicht verfolgt: echtes `adb shell input tap` vom PC (bräuchte ständig einen verbundenen Rechner); direkter Aufruf
+  der Stempel-Schnittstelle der Seite (Anmeldedaten/Token, fragil, evtl. gegen Firmenregeln).
+- Vielleicht später: ein Shizuku-Update, das `cmd` unter Android 17 wieder erlaubt → dann `input tap` erneut testen
+  (Shizuku-Test v3 zeigt es sofort).
+
+Nächster Schritt: **halbautomatisch** – Makro öffnet die Stempelseite (später per GPS mit Hinweis), Christof tippt
+„SUR SITE" selbst.
