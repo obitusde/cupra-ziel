@@ -4,7 +4,7 @@ Hier liegen Makros, die nichts mit Cupra-Ziel zu tun haben und nur zum Ausprobie
 Wenn sie laufen, zieht Christof sie in ein eigenes Repo um. **Nichts Persönliches in die Dateien** (Adressen,
 Namen, Zugangsdaten): Solche Werte stehen nur in MacroDroid-Variablen auf dem Handy.
 
-## Stempeln v8 (`Stempeln-v8.macro`, 26.10.2026)
+## Stempeln v9 (`Stempeln-v9.macro`, 26.10.2026)
 
 Stempelt in der Zeiterfassung „SUR SITE" (schaltet je nach Stand **ein oder aus**, bucht sofort, ohne Bestätigung –
 Christof 26.10.2026). Von Hand starten. **Keine Ja/Nein-Abfrage mehr** (Christof 26.10.2026: „ganz raus") –
@@ -19,11 +19,12 @@ Firefox merkt sich das nur pro Tab, Chrome pro Seite (bei Christof eingerichtet)
 | # | Aktion | Wert |
 |---|---|---|
 | 1–4 | Log, Intent (Activity), Warten 7 s | VIEW `…/ux/clock`, Paket `com.android.chrome`, Extra `com.android.browser.application_id` = `macrodroid.stempeln` (immer derselbe Tab) |
-| 5–10 | Log, wenn `debug`: Screenshot **A** | Stempelseite vor dem Tipp |
-| 11–13 | Log, UI-Interaktion **Geste** 150 ms auf **70, 567** (Start = Ende) = „SUR SITE", Warten 3 s | `action` 6, `type` „Gesture", `durationMs`/`startX`/`startY`/`endX`/`endY` (Feldnamen aus `ruby-macrodroid`, ungetestet) |
-| 14–18 | wenn `debug`: Screenshot **B** | 3 s nach dem Tipp |
-| 19–24 | Warten 5 s, wenn `debug`: Screenshot **C** | 9 s nach dem Tipp |
-| 25–31 | Log, Popup „Buchung prüfen", Startbildschirm, Warten 1 s, Chrome beenden, Log | |
+| 5–10 | Log, wenn `debug`: Screenshot **A** | vor der Geste |
+| 11–13 | Log, UI-Interaktion **Geste 200 ms** auf **70, 567** (Start = Ende) = „SUR SITE", Warten 3 s | `action` 6, `type` „Gesture", `durationMs`, `startX`/`startY`/`endX`/`endY` |
+| 14–18 | wenn `debug`: Screenshot **B** | 3 s nach der Geste (zeigt die Buchung noch **nicht**) |
+| 19–21 | Log, gleicher Intent noch einmal, Warten 7 s | lädt die Seite im selben Tab neu |
+| 22–26 | wenn `debug`: Screenshot **C** | **nach dem Neuladen: neue Buchung in der Agenda sichtbar?** |
+| 27–33 | Log, Popup, Startbildschirm, Warten 1 s, Chrome beenden, Log | |
 
 Stempelseite hochkant/Desktop in Chrome (Pixel 8, 1080 × 2400, Screenshot × 1,2): „SORTIE HOME OFFICE" y 419–454
 (x 17–209), **„SUR SITE" ≈ 37–101 / 558–576 → Tipp 70, 567**, „HUB" ab x 158.
@@ -46,19 +47,25 @@ ein normales `<button type="button">` (React, Klick-Listener am Knopf und an `di
 Chrome mit Desktop-Ansicht bucht es sofort** (Christof) → nicht die Seite, sondern der künstliche Kurz-Klick ist das
 Problem → v8: Geste mit 150 ms Druckdauer.
 
+Gelernt (v8, 26.10.2026): **Die Seite zeigt eine neue Buchung erst nach dem Neuladen** (auch nach einem Finger-Tipp
+bleibt die Agenda gleich; der rote Strich in der Agenda ist nur die aktuelle Uhrzeit, kein Status). Sicher ohne
+Buchung: v5 (13:22) und v7 (13:57). v8 (Geste 14:14:51) unklar: es gibt genau eine Buchung ← 14:15, Christof tippte
+kurz danach auch von Hand. → v9: Geste 200 ms, danach Seite neu laden und Screenshot C.
+
 ### Einrichten
 
 1. Chrome einmalig: Seite öffnen, anmelden, ⋮ → „Desktopwebsite" (erledigt 26.10.2026).
-2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v8.macro` laden → MacroDroid → ⋮ → **Import**,
+2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v9.macro` laden → MacroDroid → ⋮ → **Import**,
    ältere „Stempeln"-Fassungen löschen.
 3. MacroDroid → Variablen: **`debug`** = wahr (Screenshots an).
 4. Ausführen = **echt stempeln** (ein oder aus).
 5. Debuggen: MacroDroid → ☰ → **Makro-Log** und die Screenshots A/B/C in den Chat. **Nie ins Repo** (Name, Zeiten).
 6. Läuft alles: `debug` = falsch.
 
-### Unsicher (v8)
+### Unsicher (v9)
 
-- Import der Geste klappt (MacroDroid zeigt „Gesture (150 ms: 70,567 -> 70,567)", 26.10.2026). Offen: ob sie bucht.
+- Import der Geste klappt (26.10.2026). Offen: ob sie bucht – Screenshot C zeigt es. Ob der zweite Intent die Seite
+  wirklich neu lädt (sonst C = B).
 - Später: Start per GPS (Ankunft am Arbeitsort / Verlassen).
 
 ## Klick-Test v1 (`Klick-Test-v1.macro`, 26.10.2026)
