@@ -78,7 +78,7 @@ Veröffentlichen = committen und auf `main` pushen. Die Action läuft bei Änder
 4. ✅ Cupra-Ziel erscheint im Teilen-Menü (19.10.2026).
 5. ✅ 19.10.2026: Favoriten (Schlüssel, Sheet) klappen; `/map/evroute`, `/destsync`, `/tourimport`, `/home` → nur Startseite (entfernt in v0.3.0).
 6. ✅ 19.10.2026: MacroDroid-Makro v4/v5 sendet ans Auto (Webhook im Browser aufgerufen). v5: Treffer-Klick 650 → 470 (traf bei „Beulerweg 35, Neuenrade" die 2. Zeile).
-8. v6 (26.10.2026, Zündung an): Import ok, kam bis zum Detailblatt; Senden-Klick 2296 lag am unteren Knopfrand → v7: 2260. Offen: v7 senden (Zündung an und aus); geht „PARKPOSITION NICHT VERFÜGBAR" per Text-Klick „OK" weg?
+8. v6 (26.10.2026, Zündung an): Import ok, kam bis zum Detailblatt; Senden-Klick 2296 lag am unteren Knopfrand → v7: 2260. ✅ 26.10.2026: v7 sendet ans Auto. Offen: geht „PARKPOSITION NICHT VERFÜGBAR" per Text-Klick „OK" weg? (Hinweis kam beim Test nicht)
 7. v0.3.0: Webhook in den Einstellungen eintragen, „Ans Auto senden" aus der App, Favorit antippen; Ladeplanung v0.33.0 „Ans Auto senden".
 
 ## 7. MacroDroid (seit 19.10.2026)
