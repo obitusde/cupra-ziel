@@ -4,7 +4,7 @@ Hier liegen Makros, die nichts mit Cupra-Ziel zu tun haben und nur zum Ausprobie
 Wenn sie laufen, zieht Christof sie in ein eigenes Repo um. **Nichts Persönliches in die Dateien** (Adressen,
 Namen, Zugangsdaten): Solche Werte stehen nur in MacroDroid-Variablen auf dem Handy.
 
-## Stempeln v14 (`Stempeln-v14.macro`, 26.10.2026)
+## Stempeln v15 (`Stempeln-v15.macro`, Pixel) und Stempeln Mi v1 (`Stempeln-Mi-v1.macro`, Mi 9T), 26.10.2026
 
 Stempelt in der Zeiterfassung „SUR SITE" (schaltet je nach Stand **ein oder aus**, bucht sofort, ohne Bestätigung –
 Christof 26.10.2026). Von Hand starten. **Keine Ja/Nein-Abfrage mehr** (Christof 26.10.2026: „ganz raus") –
@@ -20,7 +20,7 @@ Firefox merkt sich das nur pro Tab, Chrome pro Seite (bei Christof eingerichtet)
 |---|---|---|
 | 1–7 | Log, Intent (Activity), Warten 7 s, Log, **gleicher Intent noch einmal**, Warten 6 s | VIEW `…/ux/clock`, Paket `com.android.chrome`, Extra `com.android.browser.application_id` = `macrodroid.stempeln` (immer derselbe Tab) |
 | 5–10 | Log, wenn `debug`: Screenshot **A** | vor dem Tipp |
-| 11–12 | Log, **Shell-Skript über Shizuku** `input tap 70 567` · `sleep 1` · `input keyevent 66` (Enter) | `ShellScriptAction`: `m_script`, `useShizuku` true, `m_nonRoot` false, `blockNextAction` true, `timeoutSeconds` 10 (Felder aus Beispiel in BespredeL/MacroDroid; Shizuku-Modus geraten) |
+| 11–12 | Log, **Shell-Skript über Shizuku** `input tap X Y </dev/null >/dev/null 2>&1` (Pixel 70 567, Mi 68 522), Rückgabewert nach `Download/stempeln.txt` | `ShellScriptAction`: `m_script`, `useShizuku` true, `m_nonRoot` false, `blockNextAction` true, `timeoutSeconds` 10 (Felder aus Beispiel in BespredeL/MacroDroid; Shizuku-Modus geraten) |
 | 13–17 | Log, Warten 5 s, Log, gleicher Intent, Warten 7 s | Seite neu laden |
 | 18–22 | wenn `debug`: Screenshot **C** | Agenda nach Neuladen |
 | 23–28 | Log, Startbildschirm, Warten 1 s, Chrome beenden, Popup, Log | |
@@ -92,14 +92,14 @@ Browser per Tastatur ausgelöst, unabhängig davon, wie die Seite Berührungen a
 ### Einrichten
 
 1. Chrome einmalig: Seite öffnen, anmelden, ⋮ → „Desktopwebsite" (erledigt 26.10.2026).
-2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v14.macro` laden → MacroDroid → ⋮ → **Import**,
+2. `https://obitusde.github.io/cupra-ziel/macrodroid/test/Stempeln-v15.macro` (Pixel) bzw. `…/Stempeln-Mi-v1.macro` (Mi) laden → MacroDroid → ⋮ → **Import**,
    ältere „Stempeln"-Fassungen löschen.
 3. MacroDroid → Variablen: **`debug`** = wahr (Screenshots an).
 4. Ausführen = **echt stempeln** (ein oder aus).
 5. Debuggen: MacroDroid → ☰ → **Makro-Log** und die Screenshots A/B/C in den Chat. **Nie ins Repo** (Name, Zeiten).
 6. Läuft alles: `debug` = falsch.
 
-### Unsicher (v14)
+### Unsicher (v15 / Mi v1)
 
 - v12–v14 buchten nicht, Christof sah keinen Tipp-Kreis. Ob `input tap` überhaupt lief, ist offen (MacroDroid führt
   Shell-Skripte stumm aus; Log 15:06 „Shizuku permission not granted" bei v12, später keine Meldung) → Shizuku-Test v1.
@@ -198,3 +198,11 @@ v3 schreibt nach `Download/mi-test3.txt`: `wm size` (A) mit Ausgabe in die Datei
 (C) nach `/dev/null`; dann `input tap 94 113` (Accueil) mit Ausgabe nach `/dev/null`, Rückgabewert in die Datei,
 Screenshot 2. A scheitert, B/C klappen und Screenshot 2 zeigt die Startseite = Vermutung bestätigt → echter Test auf
 „SUR SITE" (Mi: 68, 522), Skripte ohne Datei-Umleitung.
+
+**Ergebnis Mi-Test v3 (23:12): Vermutung bestätigt.** `wm size` mit Ausgabe in die Datei → „Failed transaction",
+über Variable → `rc=0 Physical size: 1080x2340`, nach `/dev/null` → `rc=0`. **`input tap 94 113` mit Ausgabe nach
+`/dev/null` → `rc=0`, Screenshot 2 zeigt die Startseite.** Der Shizuku-Tipp funktioniert; alle früheren
+Shizuku-Fehlschläge (Pixel v12–v14, Shizuku-Test v1/v2, Mi-Test v2) lagen an der Ausgabe-Umleitung in eine Datei
+unter `/sdcard` (bzw. bei v12–v14 vermutlich an MacroDroids Ausgabe-Kanal – nie geprüft).
+**Regel: `cmd`-Befehle (`input`, `wm`, `settings`, …) aus Shizuku immer mit `</dev/null >/dev/null 2>&1` oder über
+`$(…)` aufrufen.** → Stempeln Mi v1 / Stempeln v15 (Pixel): echter Test auf „SUR SITE".
