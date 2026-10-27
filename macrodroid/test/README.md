@@ -220,3 +220,25 @@ B `rc=0 Physical size: 1080x2400`, C `rc=0`), `input tap 94 157` → `rc=0`, Scr
 **✅ 27.10.2026: Stempeln v15 am Pixel hat gebucht** (Christof: „hat geklappt"). Getippt wird per Shizuku
 `input tap 70 567` = Mitte von „SUR SITE" (Schrift x 38–99 / y 562–572, Knopf x 18–120 / y 551–585).
 Nächste Schritte: `debug` = falsch, Start per GPS (Ankunft/Verlassen) mit Schutzregeln, Erinnerung „8 h voll".
+
+## Stempeln Ort v1 (`Stempeln-Ort-v1.macro`, 27.10.2026) – ein Knopf, Ort per GPS
+
+**Stempelt.** Christof (27.10.2026): „b" – ein Symbol, das selbst erkennt, wo er ist. Zu Hause → großer Knopf
+„ENTRÉE/SORTIE HOME OFFICE" (**113, 436**, Knopf x 18–208 / y 419–453), Le Brassus (2 Orte) → „SUR SITE" (70, 567),
+Crissier/Millenium → „HUB" (**172, 567**, Schrift x 159–186 / y 562–572). Alle schalten ein/aus.
+
+Ablauf: Popup → **`ForceLocationUpdateAction`** (JSON nur aus `ruby-macrodroid`, keine Felder), 10 s → Stempelseite
+2× öffnen → Screenshot A → **Shell (Shizuku)**: liest `{last_loc_lat}`/`{last_loc_long}` (Magic Text) und die globale
+Variable **`stempel_orte`** (`Typ;Lat;Lon;Name|…`, Typ `HO`/`SS`/`HUB`), sucht per `awk` (Haversine) den nächsten Ort;
+≤ 800 m → `input tap` auf den passenden Knopf (Ausgabe `/dev/null`), sonst nichts. Ergebnis als **Benachrichtigung**
+(`cmd notification post … </dev/null >/dev/null 2>&1`) und Zeile in `Download/stempeln.txt` → 5 s, neu laden,
+Screenshot C, Chrome beenden.
+
+**Orte nie ins Repo:** Im Repo ist `stempel_orte` leer. Die Fassung mit Christofs Orten liegt **privat in seinem
+Google Drive** (`Stempeln-Ort-v1.macro`, angelegt von Claude über den Drive-Connector), Import in MacroDroid von dort.
+Stand 27.10.2026: nur „Zuhause"; Le Brassus 1/2 und Crissier folgen, sobald Koordinaten da sind (Kurzlinks
+`maps.app.goo.gl` sind aus der Cloud nicht auflösbar).
+
+Logik lokal mit Platzhaltern getestet (Zuhause 13 m → HO, Le Brassus 83 m → SS, weit weg → nichts, kein Standort → nichts).
+Unsicher: Import von `ForceLocationUpdateAction`, ob MacroDroid Magic Text in Shell-Skripten ersetzt (Beispiel in
+BespredeL nutzt `{lv=…}` in Shell-Skripten → wahrscheinlich ja), `cmd notification post` aus Shizuku.
