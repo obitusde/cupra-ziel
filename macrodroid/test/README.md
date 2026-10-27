@@ -297,3 +297,22 @@ Christof hängt sie von Hand ans Ende an; `Lese-Test Anzeige v1` zeigt danach al
 `4:44Heures du jour` (nur abgeschlossene Blöcke), `5:38Temps de présence estimé` (laufende Arbeitszeit inkl. aktuellem Block),
 Agenda-Zeiten (07:41, 07:42, 12:21, 12:57 …). Die `index:NN` sind nicht stabil → im Skript nach Text suchen, nicht nach Index.
 Die Ausgabe enthält die URL mit Login-Ticket → nie ins Repo.
+
+## Stempeln v3 (27.10.2026) – Vorschläge per Benachrichtigung, Endzeit 8 h 25
+
+Vier Makros (private Fassungen mit Orten nur in Christofs Google Drive; Skript-Quellen in `stempeln-v3-skripte/`,
+zusammengesetzt: `kopf.sh` [+ `seite.sh`] + Teil):
+
+| Makro | Auslöser | Was |
+|---|---|---|
+| `Stempeln v3` | leer / Knopf „Stempeln" | wartet bis 60 s aufs Entsperren, Standort, Seite 2× öffnen, **Bildschirminhalt lesen** → Stand (ENTRÉE/SORTIE, „Temps de présence estimé", Agenda-Zeiten), Knopf-Position von der Seite; kein Doppel-Stempeln (Vorschlag EIN/AUS ≠ Stand → nichts tippen); unbekannter Ort → 60 s selbst tippen; neu laden, nochmal lesen → „gebucht?" + Endzeit; schreibt `Download/stempeln/zustand.txt` |
+| `Stempel-Waechter v3` | alle 5 min (nur wenn `stempel_aktiv`), 06:30 an, 19:30 aus, 2× Benachrichtigung von „Shell" | Standort + Skript: Mo–Fr, VD-Feiertage (Ostern-Formel, Bettagsmontag), `frei_bis`; Regeln: Di/Fr ab 7:30 zu Hause, Mo/Mi/Do ab 8:15 noch zu Hause (bis 11:00), Ankunft Büro (sofort, ab 8:00 alle 15 min), Pause ≥ 35 min (Ausstempeln 11:00–14:30, bis 3 h), 8 h 25 voll, Büro verlassen (> Radius + 200 m). Skript meldet per Shell-Benachrichtigung „Stempel-Vorschlag · …" bzw. „Stempel-Ruhe · …" → Benachrichtigungs-Auslöser im selben Makro zeigt MacroDroid-Benachrichtigung mit [Stempeln] [Spaeter] bzw. setzt `stempel_aktiv` = aus |
+| `Stempeln Spaeter v3` | Knopf „Spaeter" | 15 min Ruhe (`spaeter.txt`) |
+| `Stempeln Frei v3` | leer | fragt `frei_bis` (TT.MM.JJJJ), bis dahin Ruhe |
+
+Warum der Umweg über eine Shell-Benachrichtigung: Für „Shell-Ausgabe in Variable" und für Geofence-Auslöser gibt es kein
+bekanntes JSON; Benachrichtigungs-Auslöser, Benachrichtigung mit Knöpfen (startet Makro per GUID), Intervall/Uhrzeit,
+TriggerThatInvoked und Löschen von Benachrichtigungen stammen aus Beispielen (BespredeL), „Bildschirminhalt lesen" aus
+Christofs Export. Lokal in `mksh` getestet (Seite parsen mit echter Lese-Test-Ausgabe; 5 Stempel- und 20 Wächter-Fälle).
+Unsicher: Import der neuen Bausteine, ob `{notification}` den Text liefert, Akku (Standort alle 5 min 06:30–19:30).
+Ab 1. Lauf im Büro: `DEBUG=0` (dann keine Screenshots/Seiten-Dumps mehr).
