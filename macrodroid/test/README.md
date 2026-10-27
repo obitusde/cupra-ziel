@@ -243,6 +243,22 @@ Google Drive** (`Stempeln-Ort-v2.macro`, angelegt von Claude über den Drive-Con
 Stand 27.10.2026: Zuhause, Le Brassus (2 Orte), Crissier. **v2.1 (nur Drive):** genaue Koordinaten für den zweiten
 Ort in Le Brassus (v2 hatte einen geschätzten Wert); Logik unverändert, die Repo-Fassung bleibt v2.
 
+### v2.2 (27.10.2026) – Diagnose für einen einzigen Testlauf
+
+Christof kann nicht oft testen → ein Lauf muss alles zeigen. Jeder Lauf legt `Download/stempeln/<Datum_Zeit>/` an
+(Zeiger in `Download/stempeln/aktuell.txt`, damit die drei Shell-Schritte denselben Ordner finden):
+- `log.txt`: Schritt 0 (eigenes Shizuku-Skript gleich am Anfang: `id`, Gerät, Bildschirm an/aus, Sperre, App vorne,
+  `awk` vorhanden?, Benachrichtigung „Shizuku ok"), Schritt 4 (MacroDroid-Standort, Android-Standort mit Genauigkeit aus
+  `dumpsys location`, App vorne, Drehung, Rohergebnis der Berechnung, Tipp und rc), Schritt 6 (App vorne nach Neuladen).
+- `1-vor-tipp.png`, `2-nach-tipp.png` (2 s nach dem Tipp), `3-nach-neuladen.png` per `screencap` aus der Shell
+  (ersetzt die MacroDroid-Screenshots und die Variable `debug`).
+- `ergebnis.txt`; Endbenachrichtigung = Ergebnis + Ordnername. Keine Benachrichtigung = Shizuku lief nicht.
+
+`dumpsys`/`wm` nur über `$(…)` bzw. mit `</dev/null`, nie direkt in eine Datei (Regel oben). Bewusst **kein**
+`uiautomator dump` für den Seitentext: kann Bedienungshilfen-Dienste (MacroDroid, Cupra-Makro) abschalten.
+Ausschalten, wenn alles läuft: `DEBUG=0` in den Shell-Skripten (nächste Version), dann nur noch die Zeile in
+`Download/stempeln.txt`. Lokal mit nachgebauten Android-Befehlen getestet (Tipp zu Hause, zu weit weg, kein Standort).
+
 Logik lokal getestet (zu Hause 13 m → HO, Le Brassus 94 m → SS, Crissier 43 m → HUB, 718 m von zu Hause → nichts,
 kein Standort → nichts). Unsicher: Import von `ForceLocationUpdateAction`, ob MacroDroid Magic Text in Shell-Skripten
 ersetzt (Beispiel in BespredeL nutzt `{lv=…}` in Shell-Skripten → wahrscheinlich ja), `cmd notification post` aus Shizuku.
