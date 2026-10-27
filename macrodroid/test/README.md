@@ -221,24 +221,27 @@ B `rc=0 Physical size: 1080x2400`, C `rc=0`), `input tap 94 157` → `rc=0`, Scr
 `input tap 70 567` = Mitte von „SUR SITE" (Schrift x 38–99 / y 562–572, Knopf x 18–120 / y 551–585).
 Nächste Schritte: `debug` = falsch, Start per GPS (Ankunft/Verlassen) mit Schutzregeln, Erinnerung „8 h voll".
 
-## Stempeln Ort v1 (`Stempeln-Ort-v1.macro`, 27.10.2026) – ein Knopf, Ort per GPS
+## Stempeln Ort v2 (`Stempeln-Ort-v2.macro`, 27.10.2026) – ein Knopf, Ort per GPS
 
 **Stempelt.** Christof (27.10.2026): „b" – ein Symbol, das selbst erkennt, wo er ist. Zu Hause → großer Knopf
 „ENTRÉE/SORTIE HOME OFFICE" (**113, 436**, Knopf x 18–208 / y 419–453), Le Brassus (2 Orte) → „SUR SITE" (70, 567),
 Crissier/Millenium → „HUB" (**172, 567**, Schrift x 159–186 / y 562–572). Alle schalten ein/aus.
 
 Ablauf: Popup → **`ForceLocationUpdateAction`** (JSON nur aus `ruby-macrodroid`, keine Felder), 10 s → Stempelseite
-2× öffnen → Screenshot A → **Shell (Shizuku)**: liest `{last_loc_lat}`/`{last_loc_long}` (Magic Text) und die globale
-Variable **`stempel_orte`** (`Typ;Lat;Lon;Name|…`, Typ `HO`/`SS`/`HUB`), sucht per `awk` (Haversine) den nächsten Ort;
-≤ 800 m → `input tap` auf den passenden Knopf (Ausgabe `/dev/null`), sonst nichts. Ergebnis als **Benachrichtigung**
-(`cmd notification post … </dev/null >/dev/null 2>&1`) und Zeile in `Download/stempeln.txt` → 5 s, neu laden,
-Screenshot C, Chrome beenden.
+2× öffnen → Screenshot A → **Shell (Shizuku)**: liest `{last_loc_lat}`/`{last_loc_long}` (Magic Text) und die Liste
+**`ORTE`** im Skript (`Typ;Lat;Lon;Name;Radius|…`, Typ `HO`/`SS`/`HUB`, Radius leer = 800 m), sucht per `awk`
+(Haversine) den nächsten Ort; innerhalb des Radius → `input tap` auf den passenden Knopf (Ausgabe `/dev/null`), sonst
+nichts. Ergebnis als **Benachrichtigung** (`cmd notification post … </dev/null >/dev/null 2>&1`) und Zeile in
+`Download/stempeln.txt` → 5 s, neu laden, Screenshot C, Chrome beenden.
 
-**Orte nie ins Repo:** Im Repo ist `stempel_orte` leer. Die Fassung mit Christofs Orten liegt **privat in seinem
-Google Drive** (`Stempeln-Ort-v1.macro`, angelegt von Claude über den Drive-Connector), Import in MacroDroid von dort.
-Stand 27.10.2026: nur „Zuhause"; Le Brassus 1/2 und Crissier folgen, sobald Koordinaten da sind (Kurzlinks
-`maps.app.goo.gl` sind aus der Cloud nicht auflösbar).
+v1 → v2: Orte stehen direkt im Shell-Skript statt in der globalen Variable `stempel_orte` (ein Import überschreibt
+eine schon vorhandene Variable nicht zuverlässig); Radius je Ort (Zuhause kleiner, damit es nicht schon in der
+Nachbarschaft „Home Office" stempelt).
 
-Logik lokal mit Platzhaltern getestet (Zuhause 13 m → HO, Le Brassus 83 m → SS, weit weg → nichts, kein Standort → nichts).
-Unsicher: Import von `ForceLocationUpdateAction`, ob MacroDroid Magic Text in Shell-Skripten ersetzt (Beispiel in
-BespredeL nutzt `{lv=…}` in Shell-Skripten → wahrscheinlich ja), `cmd notification post` aus Shizuku.
+**Orte nie ins Repo:** Im Repo ist `ORTE` leer. Die Fassung mit Christofs Orten liegt **privat in seinem
+Google Drive** (`Stempeln-Ort-v2.macro`, angelegt von Claude über den Drive-Connector), Import in MacroDroid von dort.
+Stand 27.10.2026: Zuhause, Le Brassus (2 Orte, einer davon geschätzt – genaue Koordinaten folgen), Crissier.
+
+Logik lokal getestet (zu Hause 13 m → HO, Le Brassus 94 m → SS, Crissier 43 m → HUB, 718 m von zu Hause → nichts,
+kein Standort → nichts). Unsicher: Import von `ForceLocationUpdateAction`, ob MacroDroid Magic Text in Shell-Skripten
+ersetzt (Beispiel in BespredeL nutzt `{lv=…}` in Shell-Skripten → wahrscheinlich ja), `cmd notification post` aus Shizuku.
