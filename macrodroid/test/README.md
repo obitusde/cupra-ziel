@@ -290,3 +290,10 @@ JSON aus BespredeL) „Heures du jour", „HOME OFFICE" und einen Zeitwert (Rege
 Die Aktion „Bildschirminhalt lesen" (Wörterbuch `seite`, View-ID → Text) ist in keinem Beispiel als JSON zu finden →
 Christof hängt sie von Hand ans Ende an; `Lese-Test Anzeige v1` zeigt danach alles im Log, als Benachrichtigung und in
 `Download/lesetest.txt`. Unsicher: Webseiten-Elemente haben oft keine View-ID → evtl. fehlen sie im Wörterbuch.
+
+**Ergebnis Lese-Test v1 (27.10.2026, 13:51):** ✅ MacroDroid liest die Webseite. `CheckTextOnScreenAction` → alle drei True.
+„Bildschirminhalt lesen" (mit Positionen, Force Refresh) liefert ein Wörterbuch `index:NN` → `text`, `bounds`, `centerX/Y`, u. a.:
+`SORTIE HOME OFFICE` (Mitte 113,435; „ENTRÉE …" = ausgestempelt, „SORTIE …" = eingestempelt), `SUR SITE` (69,568), `HUB` (172,568),
+`4:44Heures du jour` (nur abgeschlossene Blöcke), `5:38Temps de présence estimé` (laufende Arbeitszeit inkl. aktuellem Block),
+Agenda-Zeiten (07:41, 07:42, 12:21, 12:57 …). Die `index:NN` sind nicht stabil → im Skript nach Text suchen, nicht nach Index.
+Die Ausgabe enthält die URL mit Login-Ticket → nie ins Repo.
