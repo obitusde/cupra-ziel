@@ -216,3 +216,7 @@ Screenshot 2 → am Pixel geht der Tipp auch → Stempeln v15 beim nächsten ech
 **Ergebnis Pixel-Test v1 (23:22): klappt auch am Pixel.** Gleiches Muster wie am Mi (A „Failed transaction",
 B `rc=0 Physical size: 1080x2400`, C `rc=0`), `input tap 94 157` → `rc=0`, Screenshot zeigt die Startseite.
 (Shizuku fragte nicht erneut nach Zugriff – MacroDroid war noch autorisiert.) → Stempeln v15 am Pixel ist der echte Test.
+
+**✅ 27.10.2026: Stempeln v15 am Pixel hat gebucht** (Christof: „hat geklappt"). Getippt wird per Shizuku
+`input tap 70 567` = Mitte von „SUR SITE" (Schrift x 38–99 / y 562–572, Knopf x 18–120 / y 551–585).
+Nächste Schritte: `debug` = falsch, Start per GPS (Ankunft/Verlassen) mit Schutzregeln, Erinnerung „8 h voll".
