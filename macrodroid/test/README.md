@@ -240,7 +240,8 @@ Nachbarschaft „Home Office" stempelt).
 
 **Orte nie ins Repo:** Im Repo ist `ORTE` leer. Die Fassung mit Christofs Orten liegt **privat in seinem
 Google Drive** (`Stempeln-Ort-v2.macro`, angelegt von Claude über den Drive-Connector), Import in MacroDroid von dort.
-Stand 27.10.2026: Zuhause, Le Brassus (2 Orte, einer davon geschätzt – genaue Koordinaten folgen), Crissier.
+Stand 27.10.2026: Zuhause, Le Brassus (2 Orte), Crissier. **v2.1 (nur Drive):** genaue Koordinaten für den zweiten
+Ort in Le Brassus (v2 hatte einen geschätzten Wert); Logik unverändert, die Repo-Fassung bleibt v2.
 
 Logik lokal getestet (zu Hause 13 m → HO, Le Brassus 94 m → SS, Crissier 43 m → HUB, 718 m von zu Hause → nichts,
 kein Standort → nichts). Unsicher: Import von `ForceLocationUpdateAction`, ob MacroDroid Magic Text in Shell-Skripten
