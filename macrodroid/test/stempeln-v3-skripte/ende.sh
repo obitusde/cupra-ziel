@@ -12,7 +12,9 @@ t "Seite nachher: Status=$STATUS Knopf='$HOT' Praesenz=$PRES Letzte=$LETZTE Buch
 A_AKTION=keine; A_STATUS="?"; A_TYP=""; A_KNOPF=""; A_TEXT=""
 [ -f "$D/aktion.txt" ] && . "$D/aktion.txt"
 if [ -n "$PRES" ] && [ "$STATUS" != "?" ]; then
-  case "$A_AKTION" in tipp) ZORT=$A_TYP ;; manuell) ZORT="" ;; *) ZORT=$( [ -f $B/zustand.txt ] && . $B/zustand.txt; echo $Z_ORT ) ;; esac
+  case "$A_AKTION" in tipp) ZORT=$A_TYP ;; manuell) ZORT="" ;; *) ZORT=$( [ -f $B/zustand.txt ] && . $B/zustand.txt && [ "$Z_DATUM" = "$HEUTE" ] && echo $Z_ORT )
+      if [ -z "$ZORT" ] && [ "$STATUS" = IN ]; then ort "{last_loc_lat}" "{last_loc_long}"; [ -n "$TYP" ] && [ "$DIST" -le "$RAD" ] && ZORT=$TYP; fi ;;
+  esac
   { echo "Z_DATUM=$HEUTE"; echo "Z_STATUS=$STATUS"; echo "Z_PRES=$PRES"; echo "Z_LESE=$EPOCH"; echo "Z_LETZTE=$LETZTE"; echo "Z_BUCH=$BUCH"; echo "Z_ORT=$ZORT"; } > $B/zustand.txt
   REST=$(( SOLL - PRES ))
   if [ "$STATUS" = IN ]; then
@@ -31,10 +33,12 @@ if [ -n "$PRES" ] && [ "$STATUS" != "?" ]; then
 $INFO"
   elif [ "$A_AKTION" = manuell ] && [ "$STATUS" != "$A_STATUS" ]; then MELD="$KOPF (von Hand)
 $INFO"
+  elif [ -z "$A_TEXT" ]; then MELD="$KOPF
+$INFO"
   else MELD="$A_TEXT
 Stand: $KOPF - $INFO"; fi
 else
-  MELD="Stempelseite nach dem Neuladen nicht gelesen - bitte selbst pruefen"
+  MELD="Stempelseite nicht gelesen - bitte selbst pruefen"
   [ "$A_AKTION" = keine ] && [ -n "$A_TEXT" ] && MELD=$A_TEXT
 fi
 t "Meldung: $MELD"

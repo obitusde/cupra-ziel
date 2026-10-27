@@ -316,3 +316,15 @@ TriggerThatInvoked und Löschen von Benachrichtigungen stammen aus Beispielen (B
 Christofs Export. Lokal in `mksh` getestet (Seite parsen mit echter Lese-Test-Ausgabe; 5 Stempel- und 20 Wächter-Fälle).
 Unsicher: Import der neuen Bausteine, ob `{notification}` den Text liefert, Akku (Standort alle 5 min 06:30–19:30).
 Ab 1. Lauf im Büro: `DEBUG=0` (dann keine Screenshots/Seiten-Dumps mehr).
+
+**Erster Lauf v3 (27.10.2026, 15:15–15:25):** Wächter läuft (Intervall, Standort ±60–100 m, Skript), schlägt aber
+korrekt nichts vor: Home-Office-Vorschlag nur bis 11:00, und das Stempeln von 12:57 (mit v2.3) kennt er nicht
+(kein `zustand.txt`) → kein „8 h 25 voll". Darum:
+
+### Stempeln Stand v3 (v3.1-Skripte, 27.10.2026)
+
+Liest die Seite, **tippt nichts**: Benachrichtigung „Eingestempelt 12:57 · heute 5:38 · fertig um 16:38" und
+`zustand.txt` für den Wächter (nach Stempeln am PC, per Badge oder direkt auf der Seite; Christof stempelt im Büro
+teils so). Ist man eingestempelt und der Ort unbekannt, nimmt `ende.sh` (v3.1) den Ort aus dem Standort (für „Büro
+verlassen"). `stand-start.sh` = `start.sh` mit anderem Text. `Stempeln v3` in Drive hat noch `ende.sh` v3.0
+(gleiches Verhalten beim Stempeln). Im Büro tippt das Makro beim Ein- und Ausstempeln „SUR SITE"/„HUB" (Christof: richtig).
