@@ -278,3 +278,15 @@ Textdateien (`log.txt`, `ergebnis.txt`) existieren, die Dateien-App zeigt sie ab
 - Meldungen getrennt: „Kein Standort" (Koordinaten ungültig) / „Ort nicht berechnet" / „Kein bekannter Ort".
 - Endbenachrichtigung: Ergebnis, Entfernung zu jedem Ort, die letzten Shell-Fehlermeldungen (`exec 2>>log.txt`; alle
   `cmd`-artigen Befehle leiten selbst nach `/dev/null` bzw. in `$(…)` um) und der Log-Ordner → Screenshot genügt.
+
+**Test v2.3 (27.10.2026, 12:56):** ✅ „HOME OFFICE gedrueckt (Zuhause, 19 m, rc=0)", Kalender zeigt „12:57 →" (Entrée Home
+Office). Logging bleibt bis zum ersten Lauf vor Ort (Sur Site / Hub), dann v2.4 mit `DEBUG=0`.
+
+## Lese-Test v1 (27.10.2026) – kann MacroDroid „Heures du jour" von der Seite lesen?
+
+Für Stempel v3 (Vorschlag per Benachrichtigung, Endzeit 8 h 25): Arbeitszeit am liebsten von der Seite lesen (Christof 1b),
+sonst zählt das Makro selbst (1a). `Lese-Test v1` öffnet die Seite und prüft per Bedienungshilfe (`CheckTextOnScreenAction`,
+JSON aus BespredeL) „Heures du jour", „HOME OFFICE" und einen Zeitwert (Regex) → `lt_heures`/`lt_knopf`/`lt_zeit`. Tippt nichts.
+Die Aktion „Bildschirminhalt lesen" (Wörterbuch `seite`, View-ID → Text) ist in keinem Beispiel als JSON zu finden →
+Christof hängt sie von Hand ans Ende an; `Lese-Test Anzeige v1` zeigt danach alles im Log, als Benachrichtigung und in
+`Download/lesetest.txt`. Unsicher: Webseiten-Elemente haben oft keine View-ID → evtl. fehlen sie im Wörterbuch.
