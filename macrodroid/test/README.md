@@ -262,3 +262,19 @@ Ausschalten, wenn alles läuft: `DEBUG=0` in den Shell-Skripten (nächste Versio
 Logik lokal getestet (zu Hause 13 m → HO, Le Brassus 94 m → SS, Crissier 43 m → HUB, 718 m von zu Hause → nichts,
 kein Standort → nichts). Unsicher: Import von `ForceLocationUpdateAction`, ob MacroDroid Magic Text in Shell-Skripten
 ersetzt (Beispiel in BespredeL nutzt `{lv=…}` in Shell-Skripten → wahrscheinlich ja), `cmd notification post` aus Shizuku.
+
+**Testlauf v2.2 (27.10.2026, 12:14 + 12:15, zu Hause):** nichts gebucht. Bestätigt: `ForceLocationUpdateAction`
+importiert und liefert den Standort (±60–83 m, 47 m von „Zuhause"), Magic Text `{last_loc_lat}`/`{last_loc_long}` wird im
+Shell-Skript ersetzt, `screencap` und `cmd notification post` aus Shizuku klappen. Benachrichtigung: „Kein Standort" –
+tatsächlich lieferte die `awk`-Rechnung am Pixel nichts (kein `2-nach-tipp.png` → Tipp-Zweig nie erreicht). Die
+Textdateien (`log.txt`, `ergebnis.txt`) existieren, die Dateien-App zeigt sie aber nicht an (nur die PNGs).
+
+### v2.3 (27.10.2026) – Rechnung ohne awk, Ergebnis in der Benachrichtigung
+
+- Entfernung per Shell-Ganzzahl (Android `mksh`, 32 Bit): Grad → Mikrograd, 1 µ° Breite = 0,1112 m, Länge bei 46,5° =
+  0,0766 m, Wurzel per Newton; mehr als 0,2° Abstand gilt als „über 20 km" (Überlaufschutz). Lokal in `mksh` getestet:
+  zu Hause 46 m → HO, Le Brassus 0 m / Le Chenit 13 m → SS, Crissier 6 m → HUB, 857 m → nichts, Zürich → nichts,
+  Magic Text nicht ersetzt / leer → „Kein Standort".
+- Meldungen getrennt: „Kein Standort" (Koordinaten ungültig) / „Ort nicht berechnet" / „Kein bekannter Ort".
+- Endbenachrichtigung: Ergebnis, Entfernung zu jedem Ort, die letzten Shell-Fehlermeldungen (`exec 2>>log.txt`; alle
+  `cmd`-artigen Befehle leiten selbst nach `/dev/null` bzw. in `$(…)` um) und der Log-Ordner → Screenshot genügt.
