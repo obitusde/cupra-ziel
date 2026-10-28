@@ -1,6 +1,7 @@
 jetzt
 echo $EPOCH > $B/lock.txt
-D=$B/$(date +%Y-%m-%d_%H%M%S); mkdir -p "$D"; echo "$D" > $B/aktuell.txt
+if [ $DEBUG = 1 ]; then D=$B/$(date +%Y-%m-%d_%H%M%S); else D=$B/lauf; rm -rf "$D"; fi
+mkdir -p "$D"; echo "$D" > $B/aktuell.txt
 L=$D/log.txt
 echo "$(date +%T) Stempeln __V__ - Start" > "$L"
 exec 2>>"$L"

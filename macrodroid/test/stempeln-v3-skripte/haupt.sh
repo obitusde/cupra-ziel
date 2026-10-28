@@ -38,8 +38,7 @@ else
   input tap $X $Y </dev/null >/dev/null 2>&1
   t "Tipp rc=$?"
   AKTION=tipp; ERGT="$KNOPF ($NAME)"
-  sleep 2
-  [ $DEBUG = 1 ] && screencap -p "$D/2-nach-tipp.png" </dev/null >/dev/null 2>&1
+  [ $DEBUG = 1 ] && { sleep 2; screencap -p "$D/2-nach-tipp.png" </dev/null >/dev/null 2>&1; }
 fi
 { echo "A_AKTION=$AKTION"; echo "A_STATUS=$STATUS"; echo "A_TYP=$TYP"; echo "A_KNOPF='$KNOPF'"; echo "A_TEXT='$ERGT'"; } > "$D/aktion.txt"
 t "Aktion: $AKTION - $ERGT"

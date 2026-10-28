@@ -23,5 +23,10 @@ stand() { STATUS="?"; HOT=""; PRES=""; HOX=113; HOY=436; SSX=70; SSY=567; HUX=17
       case "$s" in [0-2][0-9]:[0-5][0-9]) ZEITEN="$ZEITEN $s" ;; esac
     fi
   done < "$1"
-  LETZTE=""; BUCH=0
-  for s in $(for s in $ZEITEN; do echo $s; done | sort -u); do LETZTE=$s; BUCH=$(( BUCH + 1 )); done; }
+  LETZTE=""; BUCH=0; PAUSE=0; aus=""
+  # Zeiten abwechselnd rein/raus; Luecken nach einem Ausstempeln 11:00-14:30 = Mittagspause
+  for s in $(for s in $ZEITEN; do echo $s; done | sort -u); do
+    LETZTE=$s; BUCH=$(( BUCH + 1 )); m=$(minuten $s)
+    if [ $(( BUCH % 2 )) = 0 ]; then aus=$m
+    elif [ -n "$aus" ]; then [ $aus -ge 660 ] && [ $aus -le 870 ] && PAUSE=$(( PAUSE + m - aus )); aus=""; fi
+  done; }

@@ -328,3 +328,18 @@ Liest die Seite, **tippt nichts**: Benachrichtigung „Eingestempelt 12:57 · he
 teils so). Ist man eingestempelt und der Ort unbekannt, nimmt `ende.sh` (v3.1) den Ort aus dem Standort (für „Büro
 verlassen"). `stand-start.sh` = `start.sh` mit anderem Text. `Stempeln v3` in Drive hat noch `ende.sh` v3.0
 (gleiches Verhalten beim Stempeln). Im Büro tippt das Makro beim Ein- und Ausstempeln „SUR SITE"/„HUB" (Christof: richtig).
+
+**Bürotag 28.10.2026 (Le Brassus):** ✅ Ankunfts-Vorschlag, Einstempeln per Knopf, Meldung „Eingestempelt 07:55 · heute 1:36 · fertig um 16:21".
+
+### v3.1 (28.10.2026)
+
+- **Endzeit mit Mittagspause:** solange heute noch keine Pause (Lücke nach einem Ausstempeln 11:00–14:30, Agenda-Zeiten
+  abwechselnd rein/raus) und vor 14:30 → +45 min („fertig um 17:06 (mit 45 min Pause)"); danach zählt die echte Pause.
+  „8 h 25 voll" im Wächter bleibt an der echten Arbeitszeit.
+- **Schneller:** Standort parallel (keine 8 s Pause), Seite einmal öffnen; `pruef.sh` erkennt Accueil (keine
+  Präsenz/kein Knopf) und öffnet dann per `am start` (Shizuku, nach /dev/null) nochmal; nach dem Neuladen dieselbe Prüfung.
+  **Chrome wird nicht mehr beendet** (Vermutung: Beenden kostet die Anmeldung → Horoquartz landet nach dem Login auf Accueil).
+  Erwartet ~20–25 s statt ~40 s.
+- **Logging aus** (`DEBUG=0`): kein Ordner/Screenshot je Lauf, letzter Lauf in `Download/stempeln/lauf/` (log.txt).
+- Neu: `Stempeln v3.1`, `Stempel-Waechter v3.1` (Knopf → Stempeln v3.1, sonst unverändert), `Stempeln Stand v3.1`;
+  `Stempeln Spaeter v3` und `Stempeln Frei v3` bleiben.

@@ -1,6 +1,6 @@
 B=/sdcard/Download/stempeln
 mkdir -p $B
-DEBUG=1
+DEBUG=0
 SOLL=505
 ORTE="__ORTE__"
 note() { cmd notification post -S bigtext -t "$2" "$3" "$1" </dev/null >/dev/null 2>&1; }

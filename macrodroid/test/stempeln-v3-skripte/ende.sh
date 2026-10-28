@@ -9,6 +9,7 @@ elemente "$D/seite-nach.txt" > "$D/elemente-nach.txt"
 stand "$D/elemente-nach.txt"
 t "Seite nachher: Status=$STATUS Knopf='$HOT' Praesenz=$PRES Letzte=$LETZTE Buchungen=$BUCH"
 [ $DEBUG = 1 ] && screencap -p "$D/3-nach-neuladen.png" </dev/null >/dev/null 2>&1
+t "Pause heute: $PAUSE min"
 A_AKTION=keine; A_STATUS="?"; A_TYP=""; A_KNOPF=""; A_TEXT=""
 [ -f "$D/aktion.txt" ] && . "$D/aktion.txt"
 if [ -n "$PRES" ] && [ "$STATUS" != "?" ]; then
@@ -18,7 +19,9 @@ if [ -n "$PRES" ] && [ "$STATUS" != "?" ]; then
   { echo "Z_DATUM=$HEUTE"; echo "Z_STATUS=$STATUS"; echo "Z_PRES=$PRES"; echo "Z_LESE=$EPOCH"; echo "Z_LETZTE=$LETZTE"; echo "Z_BUCH=$BUCH"; echo "Z_ORT=$ZORT"; } > $B/zustand.txt
   REST=$(( SOLL - PRES ))
   if [ "$STATUS" = IN ]; then
-    if [ $REST -gt 0 ]; then INFO="heute $(hm $PRES) - noch $(hm $REST) -> fertig um $(hm $(( (NOW + REST) % 1440 )))"
+    PZU=0; [ $PAUSE = 0 ] && [ $NOW -lt 870 ] && PZU=45
+    if [ $REST -gt 0 ]; then INFO="heute $(hm $PRES) - noch $(hm $REST) -> fertig um $(hm $(( (NOW + REST + PZU) % 1440 )))"
+      [ $PZU -gt 0 ] && INFO="$INFO (mit 45 min Pause)"
     else INFO="heute $(hm $PRES) - 8 h 25 schon voll"; fi
     KOPF="Eingestempelt${LETZTE:+ $LETZTE}"
   else
