@@ -38,6 +38,8 @@ DA=""; [ -n "$TYP" ] && [ "$DIST" -le "$RAD" ] && DA=$TYP
 ZIEL=""; MSG=""; WDH=15
 if [ "$Z_STATUS" = IN ]; then
   if [ $P -ge $SOLL ]; then ZIEL=AUS; MSG="8 h 25 voll (heute $(hm $P)) - ausstempeln?"
+  elif [ $NOW -ge 705 ] && [ $NOW -lt 870 ] && [ $(minuten "${Z_LETZTE:-0:00}") -lt 660 ]; then
+    ZIEL=AUS; MSG="Mittagspause (heute $(hm $P)) - ausstempeln?"
   elif [ "$Z_ORT" = SS ] || [ "$Z_ORT" = HUB ]; then
     if [ -n "$TYP" ] && { [ "$TYP" != SS ] && [ "$TYP" != HUB ] || [ "$DIST" -gt $(( RAD + 200 )) ]; }; then
       ZIEL=AUS; MSG="Buero verlassen (heute $(hm $P)) - ausstempeln?"; fi

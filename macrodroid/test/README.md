@@ -343,3 +343,9 @@ verlassen"). `stand-start.sh` = `start.sh` mit anderem Text. `Stempeln v3` in Dr
 - **Logging aus** (`DEBUG=0`): kein Ordner/Screenshot je Lauf, letzter Lauf in `Download/stempeln/lauf/` (log.txt).
 - Neu: `Stempeln v3.1`, `Stempel-Waechter v3.1` (Knopf → Stempeln v3.1, sonst unverändert), `Stempeln Stand v3.1`;
   `Stempeln Spaeter v3` und `Stempeln Frei v3` bleiben.
+
+### Wächter v3.2 (28.10.2026)
+
+Christof: Erinnerung zur Mittagspause **ab 11:45**, alle 15 min bis ausgestempelt. Regel: eingestempelt, letzte Buchung vor
+11:00 (also noch keine Pause), 11:45–14:30 → „Mittagspause (heute …) – ausstempeln?" mit [Stempeln] [Spaeter]. Geht vor
+„Büro verlassen", nach „8 h 25 voll". Knopf startet weiterhin `Stempeln v3.1`.
