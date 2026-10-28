@@ -15,13 +15,19 @@ WUNSCH=""; [ -f $B/vorschlag.txt ] && . $B/vorschlag.txt && [ $(( EPOCH - ${V_ZE
 rm -f $B/vorschlag.txt
 t "Wunsch aus Vorschlag: '${WUNSCH:-keiner}'"
 [ $DEBUG = 1 ] && screencap -p "$D/1-vor-tipp.png" </dev/null >/dev/null 2>&1
-AKTION=keine; KNOPF=""
+Z_DATUM=""; Z_ORT=""; [ -f $B/zustand.txt ] && . $B/zustand.txt; [ "$Z_DATUM" = "$HEUTE" ] || Z_ORT=""
+# Ausstempeln immer mit dem Knopf, mit dem eingestempelt wurde (Christof 28.10.2026)
+if [ "$STATUS" = IN ] && [ -n "$Z_ORT" ]; then
+  [ "$TYP" != "$Z_ORT" ] && t "Ausstempeln mit Knopf vom Einstempeln: $Z_ORT (Standort: ${TYP:-?})"
+  TYP=$Z_ORT; DIST=0; RAD=1; NAME="wie beim Einstempeln"
+fi
+AKTION=keine; KNOPF=""; KORR=""
 if [ -z "$PRES" ] && [ "$STATUS" = "?" ]; then
   ERGT="Stempelseite nicht gelesen - nichts gestempelt, bitte selbst pruefen"
 elif [ "$WUNSCH" = EIN ] && [ "$STATUS" = IN ]; then
-  ERGT="Du bist schon eingestempelt - nichts getippt"
+  ERGT="Du bist schon eingestempelt - nichts getippt"; KORR=AUS
 elif [ "$WUNSCH" = AUS ] && [ "$STATUS" = OUT ]; then
-  ERGT="Du bist schon ausgestempelt - nichts getippt"
+  ERGT="Du bist schon ausgestempelt - nichts getippt"; KORR=EIN
 elif [ -z "$TYP" ] || [ "$DIST" -gt "$RAD" ]; then
   AKTION=manuell
   if [ -z "$TYP" ]; then W="kein Standort"; else W="naechster Ort $NAME, $DIST m"; fi
@@ -40,5 +46,5 @@ else
   AKTION=tipp; ERGT="$KNOPF ($NAME)"
   [ $DEBUG = 1 ] && { sleep 2; screencap -p "$D/2-nach-tipp.png" </dev/null >/dev/null 2>&1; }
 fi
-{ echo "A_AKTION=$AKTION"; echo "A_STATUS=$STATUS"; echo "A_TYP=$TYP"; echo "A_KNOPF='$KNOPF'"; echo "A_TEXT='$ERGT'"; } > "$D/aktion.txt"
+{ echo "A_AKTION=$AKTION"; echo "A_STATUS=$STATUS"; echo "A_TYP=$TYP"; echo "A_KNOPF='$KNOPF'"; echo "A_TEXT='$ERGT'"; echo "A_KORR=$KORR"; } > "$D/aktion.txt"
 t "Aktion: $AKTION - $ERGT"

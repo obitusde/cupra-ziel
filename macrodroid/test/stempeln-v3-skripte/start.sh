@@ -13,5 +13,6 @@ while [ "$(gesperrt)" != 0 ] && [ $n -lt 60 ]; do
   [ $n = 0 ] && { note "Bitte entsperren - dann wird gestempelt" "Stempeln" stempeln; t "gesperrt, warte"; }
   sleep 2; n=$(( n + 2 ))
 done
+cmd statusbar collapse </dev/null >/dev/null 2>&1; t "Leiste schliessen rc=$?"
 t "Sperre: $(dumpsys window </dev/null 2>&1 | grep -oE 'isKeyguardShowing=[a-z]*|mShowingLockscreen=[a-z]*|mDreamingLockscreen=[a-z]*' | sort -u | tr '\n' ' ') (gewartet $n s)"
 note "Stempeln laeuft ..." "Stempeln" stempeln

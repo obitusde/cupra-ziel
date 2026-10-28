@@ -10,7 +10,7 @@ stand "$D/elemente-nach.txt"
 t "Seite nachher: Status=$STATUS Knopf='$HOT' Praesenz=$PRES Letzte=$LETZTE Buchungen=$BUCH"
 [ $DEBUG = 1 ] && screencap -p "$D/3-nach-neuladen.png" </dev/null >/dev/null 2>&1
 t "Pause heute: $PAUSE min"
-A_AKTION=keine; A_STATUS="?"; A_TYP=""; A_KNOPF=""; A_TEXT=""
+A_AKTION=keine; A_STATUS="?"; A_TYP=""; A_KNOPF=""; A_TEXT=""; A_KORR=""
 [ -f "$D/aktion.txt" ] && . "$D/aktion.txt"
 if [ -n "$PRES" ] && [ "$STATUS" != "?" ]; then
   case "$A_AKTION" in tipp) ZORT=$A_TYP ;; manuell) ZORT="" ;; *) ZORT=$( [ -f $B/zustand.txt ] && . $B/zustand.txt && [ "$Z_DATUM" = "$HEUTE" ] && echo $Z_ORT )
@@ -43,6 +43,15 @@ Stand: $KOPF - $INFO"; fi
 else
   MELD="Stempelseite nicht gelesen - bitte selbst pruefen"
   [ "$A_AKTION" = keine ] && [ -n "$A_TEXT" ] && MELD=$A_TEXT
+fi
+if [ -n "$A_KORR" ] && [ "$STATUS" != "?" ]; then
+  if [ "$STATUS" = OUT ]; then KZ=EIN; KM="Du bist ausgestempelt${LETZTE:+ seit $LETZTE} - einstempeln?"
+  else KZ=AUS; KM="Du bist eingestempelt${LETZTE:+ seit $LETZTE} - ausstempeln?"; fi
+  { echo "V_ZIEL=$KZ"; echo "V_ZEIT=$EPOCH"; echo "V_DATUM=$HEUTE"; } > $B/vorschlag-letzter.txt
+  cp $B/vorschlag-letzter.txt $B/vorschlag.txt
+  MELD="Die Erinnerung passte nicht zu deinem Stand - nichts getippt. Neue Frage kommt."
+  note "Stempel-Vorschlag · $KM" "Stempel-Vorschlag" vorschlag
+  t "Korrektur-Vorschlag: $KM"
 fi
 t "Meldung: $MELD"
 note "$MELD" "Stempeln" stempeln

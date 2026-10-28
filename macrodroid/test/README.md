@@ -349,3 +349,19 @@ verlassen"). `stand-start.sh` = `start.sh` mit anderem Text. `Stempeln v3` in Dr
 Christof: Erinnerung zur Mittagspause **ab 11:45**, alle 15 min bis ausgestempelt. Regel: eingestempelt, letzte Buchung vor
 11:00 (also noch keine Pause), 11:45–14:30 → „Mittagspause (heute …) – ausstempeln?" mit [Stempeln] [Spaeter]. Geht vor
 „Büro verlassen", nach „8 h 25 voll". Knopf startet weiterhin `Stempeln v3.1`.
+
+### v3.2 / Wächter v3.3 (28.10.2026)
+
+- **Benachrichtigungsleiste schließen:** `start.sh`/`stand-start.sh` rufen nach dem Entsperren `cmd statusbar collapse`
+  (Shizuku, nach /dev/null) – Knopf in der Benachrichtigung ließ die Leiste offen. Unsicher, ob das unter Android 17 aus
+  Shizuku wirkt (Log `Leiste schliessen rc=…`).
+- **Falsche Erinnerung → richtige Frage:** passt der Vorschlag nicht zum Stand (z. B. „ausstempeln?", aber schon per Badge
+  ausgestempelt), tippt `haupt.sh` nichts (`A_KORR`), `ende.sh` zeigt „Die Erinnerung passte nicht zu deinem Stand" und
+  sofort einen neuen Vorschlag „Du bist ausgestempelt seit 12:21 – einstempeln?" mit Knopf.
+- **Ausstempeln mit dem Knopf vom Einstempeln** (`Z_ORT` aus `zustand.txt`, Standort egal). Christof: Ortswechsel =
+  dort ausstempeln, woanders einstempeln.
+- **Le Brassus Radius 1200 m** (Kantine ~750 m entfernt; nur in den privaten Fassungen).
+- **Shizuku-Prüfung 06:30** (Wächter v3.3): `shizuku_ok` = aus, Shell-Skript `ok.sh` meldet „Stempel-OK · Shizuku laeuft",
+  der Benachrichtigungs-Auslöser setzt `shizuku_ok` = an; nach 20 s noch aus → Warnung „Shizuku laeuft nicht".
+- Neu: `Stempeln v3.2`, `Stempeln Stand v3.2`, `Stempel-Waechter v3.3` (Knopf → Stempeln v3.2). `Stempeln Spaeter v3`
+  und `Stempeln Frei v3` bleiben. Globale Variable neu: `shizuku_ok`.
