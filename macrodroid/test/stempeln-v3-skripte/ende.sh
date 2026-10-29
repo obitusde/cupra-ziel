@@ -1,60 +1,66 @@
-D=$(cat $B/aktuell.txt 2>/dev/null); [ -d "$D" ] || { D=$B/ohne-start; mkdir -p "$D"; }
+D=$(cat $B/aktuell.txt 2>/dev/null); [ -d "$D" ] || { D=$B/lauf; mkdir -p "$D"; }
 L=$D/log.txt; exec 2>>"$L"
-t() { echo "$(date +%T) $*" >> "$L"; }
+t() { [ $DEBUG = 1 ] && echo "$(date +%T) $*" >> "$L"; }
 jetzt
 grep -v 'ticket=' > "$D/seite-nach.txt" <<'ENDE_SEITE'
 {v=seite}
 ENDE_SEITE
 elemente "$D/seite-nach.txt" > "$D/elemente-nach.txt"
 stand "$D/elemente-nach.txt"
-t "Seite nachher: Status=$STATUS Knopf='$HOT' Praesenz=$PRES Letzte=$LETZTE Buchungen=$BUCH"
-[ $DEBUG = 1 ] && screencap -p "$D/3-nach-neuladen.png" </dev/null >/dev/null 2>&1
-t "Pause heute: $PAUSE min"
-A_AKTION=keine; A_STATUS="?"; A_TYP=""; A_KNOPF=""; A_TEXT=""; A_KORR=""
+t "Seite nachher: Status=$STATUS Praesenz=$PRES Letzte=$LETZTE Buchungen=$BUCH Pause=$PAUSE"
+A_AKTION=keine; A_STATUS="?"; A_TYP=""; A_NAME=""; A_TEXT=""; A_KORR=""
 [ -f "$D/aktion.txt" ] && . "$D/aktion.txt"
+Z_DATUM=""; Z_ORT=""; Z_NAME=""; [ -f $B/zustand.txt ] && . $B/zustand.txt
+[ "$Z_DATUM" = "$HEUTE" ] || { Z_ORT=""; Z_NAME=""; }
+ort "{last_loc_lat}" "{last_loc_long}"
 if [ -n "$PRES" ] && [ "$STATUS" != "?" ]; then
-  case "$A_AKTION" in tipp) ZORT=$A_TYP ;; manuell) ZORT="" ;; *) ZORT=$( [ -f $B/zustand.txt ] && . $B/zustand.txt && [ "$Z_DATUM" = "$HEUTE" ] && echo $Z_ORT )
-      if [ -z "$ZORT" ] && [ "$STATUS" = IN ]; then ort "{last_loc_lat}" "{last_loc_long}"; [ -n "$TYP" ] && [ "$DIST" -le "$RAD" ] && ZORT=$TYP; fi ;;
+  # Knopf merken, mit dem eingestempelt wurde (fuers Ausstempeln)
+  case "$A_AKTION" in
+    tipp) Z_ORT=$A_TYP; Z_NAME=$A_NAME ;;
+    manuell) Z_ORT=""; Z_NAME="" ;;
+    *) if [ -z "$Z_ORT" ] && [ "$STATUS" = IN ]; then wahl EIN; Z_ORT=$KTYP; Z_NAME=$KNAME; fi ;;
   esac
-  { echo "Z_DATUM=$HEUTE"; echo "Z_STATUS=$STATUS"; echo "Z_PRES=$PRES"; echo "Z_LESE=$EPOCH"; echo "Z_LETZTE=$LETZTE"; echo "Z_BUCH=$BUCH"; echo "Z_ORT=$ZORT"; } > $B/zustand.txt
+  { echo "Z_DATUM=$HEUTE"; echo "Z_STATUS=$STATUS"; echo "Z_PRES=$PRES"; echo "Z_LESE=$EPOCH"; echo "Z_LETZTE=$LETZTE"; echo "Z_BUCH=$BUCH"
+    echo "Z_ORT=$Z_ORT"; echo "Z_NAME='$Z_NAME'"; } > $B/zustand.txt
+  ZL=""; [ -n "$Z_ORT" ] && ZL=" - $(label "$Z_ORT" "$Z_NAME")"
   REST=$(( SOLL - PRES ))
   if [ "$STATUS" = IN ]; then
     PZU=0; [ $PAUSE = 0 ] && [ $NOW -lt 870 ] && PZU=45
     if [ $REST -gt 0 ]; then INFO="heute $(hm $PRES) - noch $(hm $REST) -> fertig um $(hm $(( (NOW + REST + PZU) % 1440 )))"
       [ $PZU -gt 0 ] && INFO="$INFO (mit 45 min Pause)"
     else INFO="heute $(hm $PRES) - 8 h 25 schon voll"; fi
-    KOPF="Eingestempelt${LETZTE:+ $LETZTE}"
+    KOPF="Eingestempelt${LETZTE:+ $LETZTE}$ZL"
   else
     if [ $REST -gt 0 ]; then INFO="heute $(hm $PRES) - noch $(hm $REST) offen"
-      L2=$(minuten "${LETZTE:-0:00}"); [ $L2 -ge 660 ] && [ $L2 -le 870 ] && INFO="$INFO - Pause-Erinnerung um $(hm $(( L2 + 35 )))"
+      L2=$(minuten "${LETZTE:-0:00}")
+      [ $L2 -ge 660 ] && [ $L2 -le 870 ] && INFO="$INFO
+Pause 30 min bis $(hm $(( L2 + 30 ))), 45 min bis $(hm $(( L2 + 45 )))"
     else INFO="heute $(hm $PRES) - Feierabend"; fi
     KOPF="Ausgestempelt${LETZTE:+ $LETZTE}"
+    [ "$A_AKTION" = tipp ] && KOPF="$KOPF - $(label "$A_TYP" "$A_NAME")"
   fi
   if [ "$A_AKTION" = tipp ] && [ "$STATUS" = "$A_STATUS" ]; then
     MELD="ACHTUNG: $A_TEXT getippt, aber der Stand hat sich nicht geaendert ($KOPF). Bitte pruefen!"
-  elif [ "$A_AKTION" = tipp ]; then MELD="$KOPF - $A_TEXT
-$INFO"
   elif [ "$A_AKTION" = manuell ] && [ "$STATUS" != "$A_STATUS" ]; then MELD="$KOPF (von Hand)
 $INFO"
-  elif [ -z "$A_TEXT" ]; then MELD="$KOPF
-$INFO"
-  else MELD="$A_TEXT
-Stand: $KOPF - $INFO"; fi
+  elif [ -n "$A_TEXT" ] && [ "$A_AKTION" != tipp ]; then MELD="$A_TEXT
+$KOPF - $INFO"
+  else MELD="$KOPF
+$INFO"; fi
 else
   MELD="Stempelseite nicht gelesen - bitte selbst pruefen"
   [ "$A_AKTION" = keine ] && [ -n "$A_TEXT" ] && MELD=$A_TEXT
 fi
+# Erinnerung passte nicht (Stand oder Ort): nichts getippt, gleich die richtige Frage
 if [ -n "$A_KORR" ] && [ "$STATUS" != "?" ]; then
-  if [ "$STATUS" = OUT ]; then KZ=EIN; KM="Du bist ausgestempelt${LETZTE:+ seit $LETZTE} - einstempeln?"
-  else KZ=AUS; KM="Du bist eingestempelt${LETZTE:+ seit $LETZTE} - ausstempeln?"; fi
-  { echo "V_ZIEL=$KZ"; echo "V_ZEIT=$EPOCH"; echo "V_DATUM=$HEUTE"; } > $B/vorschlag-letzter.txt
+  if [ "$STATUS" = OUT ]; then KZ=EIN; wahl EIN; KM="Du bist ausgestempelt${LETZTE:+ seit $LETZTE} - einstempeln? → $LABEL"
+  else KZ=AUS; wahl AUS; KM="Du bist eingestempelt${LETZTE:+ seit $LETZTE} - ausstempeln? → $LABEL"; fi
+  { echo "V_ZIEL=$KZ"; echo "V_ZEIT=$EPOCH"; echo "V_DATUM=$HEUTE"; echo "V_LABEL='$LABEL'"; echo "V_GRUND='Korrektur'"; } > $B/vorschlag-letzter.txt
   cp $B/vorschlag-letzter.txt $B/vorschlag.txt
-  MELD="Die Erinnerung passte nicht zu deinem Stand - nichts getippt. Neue Frage kommt."
-  note "Stempel-Vorschlag · $KM" "Stempel-Vorschlag" vorschlag
+  MELD="$A_TEXT. Neue Frage kommt."
+  signal "$KM"
   t "Korrektur-Vorschlag: $KM"
 fi
 t "Meldung: $MELD"
 note "$MELD" "Stempeln" stempeln
-echo "$(date '+%d.%m.%Y %H:%M') $(echo "$MELD" | tr '\n' ' ') [${D##*/}]" >> /sdcard/Download/stempeln.txt
 rm -f $B/lock.txt
-t "Ende"

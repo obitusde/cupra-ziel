@@ -365,3 +365,22 @@ Christof: Erinnerung zur Mittagspause **ab 11:45**, alle 15 min bis ausgestempel
   der Benachrichtigungs-Auslöser setzt `shizuku_ok` = an; nach 20 s noch aus → Warnung „Shizuku laeuft nicht".
 - Neu: `Stempeln v3.2`, `Stempeln Stand v3.2`, `Stempel-Waechter v3.3` (Knopf → Stempeln v3.2). `Stempeln Spaeter v3`
   und `Stempeln Frei v3` bleiben. Globale Variable neu: `shizuku_ok`.
+
+### v3.3 / Wächter v3.4 / Spaeter + Frei v3.1 (29.10.2026)
+
+- **Knopf und Ort in jeder Erinnerung und Meldung:** „→ SUR SITE (Le Brassus)“ bzw. „(Le Chenit)“, „→ HUB“, „→ HOME OFFICE“,
+  „→ unbekannter Ort, du tippst selbst“. `zustand.txt` merkt zusätzlich `Z_NAME` (beide Büros sind SUR SITE), Funktionen
+  `label`/`wahl` in `kopf.sh`.
+- **Ort geändert zwischen Erinnerung und Tippen:** Vorschlag speichert `V_LABEL`; passt der Knopf jetzt nicht mehr, tippt
+  `haupt.sh` nichts, `ende.sh` stellt sofort die richtige Frage.
+- **Uhrzeit vorne** in jeder Benachrichtigung (`note`). Vorschlag: Text im **Titel** der Shell-Benachrichtigung, Kennung
+  „Stempel-Vorschlag“ im Text → MacroDroid zeigt `{not_title}` (kein Vorspann mehr).
+- **Mittagspause:** nach dem Ausstempeln „Pause 30 min bis …, 45 min bis …“. **8 h 25:** „8 h 25 voll seit 16:37 (+15 min)“.
+- **Spaeter v3.1:** Bestätigung „Spaeter: Mittagspause – Erinnerung wieder ab 12:36“, verschwindet nach 6 s (Löschen per Text).
+- **Schneller:** keine Log-/Toast-Aktionen, kein Lauf-Log (`DEBUG=0` → `t`/`w` schreiben nichts), Prüfung „Stempelseite da?“
+  per `CheckTextOnScreenAction` („HOME OFFICE“ → Variable `seite_ok`); nur wenn nicht da: `neu.sh` (nochmal öffnen) und
+  zweites Lesen. Wartezeiten nach dem Öffnen bleiben 6 s (sonst könnte die alte Seite gelesen werden).
+- Beschreibungen der Makros aus Nutzersicht (was läuft, was Christof tun muss und was nicht).
+- Lokal getestet (mksh, 15 Fälle): Ankunft, Home Office, Mittagspause, 8 h 25, Ortswechsel-Korrektur, Kantine weit weg,
+  Stand nach Badge (Le Chenit), alter `zustand.txt` ohne `Z_NAME`, Spaeter + Wiederholung, Wochenende.
+- Unsicher: `{not_title}` (aus Beispielen, nicht am Pixel getestet), `CheckTextOnScreenAction` mit globaler Variable.
