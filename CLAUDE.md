@@ -95,6 +95,8 @@ Veröffentlichen = committen und auf `main` pushen. Die Action läuft bei Änder
   4. (c) Bestätigung „Erinnerung in 15 min" verschwindet nach ein paar Sekunden von selbst und nennt den Grund.
   5. (d) Vorspann „Stempel-Vorschlag ·" im angezeigten Text weglassen (unsicher, ob MacroDroid z. B. `{notification_title}` o. Ä. hergibt).
   6. Makro-Beschreibungen aus Nutzersicht (siehe unten).
+  7. „8 h 25 voll (heute 8:25)" nennt 8:25 doppelt → stattdessen z. B. „8 h 25 voll seit 16:37" bzw. „8 h 25 voll (+15 min) – ausstempeln?".
+  8. Jede Benachrichtigung (Vorschläge und Meldungen) beginnt mit der aktuellen Uhrzeit, damit Christof später sieht, wie alt sie ist (z. B. „16:52 · …").
   Offen: „Stempeln Spaeter v3" lief am 28.10. um 15:06:57 ohne dass Christof bewusst „Spaeter" tippte (Log ohne Filter von 15:04–15:07 angefragt).
 - Aktionsbausteine, deren JSON aus Beispielen stammt (Import hat geklappt): `LogAction` (`logLevel`, `logMacro`, `m_logText`), `TakeScreenshotAction` (`m_option` 0 = auf Gerät, ohne Rückfrage), `SetVariableAction` mit `m_userPrompt` (Ja/Nein über `m_trueLabel`/`m_falseLabel`), `IfConditionAction`/`ElseAction`/`EndIfAction`, `EmptyTrigger`, `ShellScriptAction` (`m_script`, `m_nonRoot`, `useShizuku`, `useHelper`, `timeoutSeconds`, `blockNextAction`), `UIInteractionAction` als Geste (`action` 6, Konfiguration `type` „Gesture", `durationMs`, `startX`/`startY`/`endX`/`endY`; Import am 26.10.2026 korrekt angezeigt), `LaunchHomeScreenAction` (keine Felder), `KillBackgroundAppAction` (`m_applicationNameList`, `m_packageNameList`), `ToastAction` (Felder aus Export in BespredeL/MacroDroid).
 
