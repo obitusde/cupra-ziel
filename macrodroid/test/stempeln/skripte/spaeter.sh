@@ -1,3 +1,4 @@
+# Knopf [Spaeter]: 15 min keine Erinnerung
 jetzt
 V_GRUND=""; [ -f $B/vorschlag-letzter.txt ] && . $B/vorschlag-letzter.txt
 echo $(( EPOCH + 900 )) > $B/spaeter.txt

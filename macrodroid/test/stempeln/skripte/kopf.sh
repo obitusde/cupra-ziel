@@ -1,0 +1,83 @@
+# Stempel-Skripte - gemeinsamer Kopf (Version siehe SKV)
+# Wird von den Makro-Huellen geladen: vorher gesetzt LAT LON FREI TEXT (Magic Text aus MacroDroid)
+SKV=4.0
+B=/sdcard/Download/stempeln
+mkdir -p $B
+DEBUG=0
+SOLL=505
+# Orte: eigene Datei auf dem Handy (schreibt das private Makro "Stempeln Update"), nie im Repo
+ORTE=$(cat $B/orte.txt 2>/dev/null)
+# Meldung mit Uhrzeit vorne: note TEXT TITEL TAG
+note() { cmd notification post -S bigtext -t "$2" "$3" "$(date +%H:%M) · $1" </dev/null >/dev/null 2>&1; }
+# Vorschlag an den Waechter: Text steht im Titel (MacroDroid zeigt not_title), Kennung "Stempel-Vorschlag" im Text
+signal() { cmd notification post -S bigtext -t "$(date +%H:%M) · $1" vorschlag "Stempel-Vorschlag" </dev/null >/dev/null 2>&1; }
+jetzt() { if [ -n "$T_JETZT" ]; then set -- $T_JETZT; else set -- $(date '+%Y %m %d %H %M %u %s'); fi
+  JJ=$1; MM=${2#0}; TT=${3#0}; HH=${4#0}; MI=${5#0}; WT=$6; EPOCH=$7; HEUTE=$1-$2-$3; NOW=$(( ${HH:-0}*60 + ${MI:-0} )); }
+hm() { echo "$(( $1 / 60 )):$(( $1 % 60 / 10 ))$(( $1 % 10 ))"; }
+minuten() { h=${1%%:*}; m=${1#*:}; h=${h#0}; m=${m#0}; echo $(( ${h:-0}*60 + ${m:-0} )); }
+mikro() { g=${1%%.*}; f=${1#*.}; [ "$f" = "$1" ] && f=0; f=${f}000000; f=${f%"${f#??????}"}; echo $(( g*1000000 + 1$f - 1000000 )); }
+wurzel() { n=$1; x=$n; [ $x -le 1 ] && { echo $x; return; }; y=$(( (x+1)/2 )); while [ $y -lt $x ]; do x=$y; y=$(( (x + n/x)/2 )); done; echo $x; }
+abst() { a=$(( $1 - $3 )); b=$(( $2 - $4 )); [ $a -lt 0 ] && a=$(( -a )); [ $b -lt 0 ] && b=$(( -b ))
+  if [ $a -gt 200000 ] || [ $b -gt 200000 ]; then echo 99999; return; fi
+  a=$(( a*1112/10000 )); b=$(( b*766/10000 )); wurzel $(( a*a + b*b )); }
+# naechster Ort zu $1 $2 -> TYP DIST RAD NAME (TYP leer = kein gueltiger Standort)
+ort() { TYP=""; DIST=""; RAD=""; NAME=""
+  case "$1$2" in *[0-9].[0-9]*[0-9].[0-9]*) ;; *) return ;; esac
+  la=$(mikro "$1"); lo=$(mikro "$2")
+  set -f; alt=$IFS; IFS='|'
+  for o in $ORTE; do
+    IFS=';'; set -- $o; IFS='|'
+    [ $# -ge 4 ] || continue
+    e=$(abst $la $lo $(mikro "$2") $(mikro "$3")); r=${5:-800}
+    if [ -z "$DIST" ] || [ "$e" -lt "$DIST" ]; then TYP=$1; DIST=$e; RAD=$r; NAME=$4; fi
+  done
+  IFS=$alt; set +f; }
+# Knopf-Text fuer Typ $1 (nur der Knopf, ohne Ortsname)
+label() { case "$1" in HO) echo "HOME OFFICE" ;; HUB) echo "HUB" ;; SS) echo "SUR SITE" ;; *) echo "unbekannter Ort, du tippst selbst" ;; esac; }
+# Welcher Knopf fuer Richtung $1 (EIN/AUS)? AUS = Knopf vom Einstempeln (Z_ORT), sonst Standort (vorher ort aufrufen)
+# -> KTYP KNAME LABEL (KTYP leer = unbekannter Ort)
+wahl() { if [ "$1" = AUS ] && [ -n "$Z_ORT" ]; then KTYP=$Z_ORT; KNAME=$Z_NAME
+  elif [ -n "$TYP" ] && [ "$DIST" -le "$RAD" ]; then KTYP=$TYP; KNAME=$NAME
+  else KTYP=""; KNAME=""; fi
+  LABEL=$(label "$KTYP"); }
+# Woerterbuch aus "Bildschirminhalt lesen" -> Zeilen "x|y|Text"
+elemente() { x=""; y=""
+  while IFS= read -r z; do
+    case "$z" in
+      "-- [centerX]: "*) x=${z#*: } ;;
+      "-- [centerY]: "*) y=${z#*: } ;;
+      "-- [text]: "*) s=${z#*\]: }; [ -n "$s" ] && echo "$x|$y|$s" ;;
+    esac
+  done < "$1"; }
+# Stand aus Elementliste $1: STATUS (IN/OUT/?), PRES (Minuten, leer = nicht gelesen), LETZTE, BUCH, PAUSE, Knopf-Positionen
+# AGENDA=1 nur wenn die Agenda fertig geladen ist (Stundenzahl 23:00 in der Agenda-Spalte) - sonst ist der Knopf-Text unzuverlaessig
+stand() { STATUS="?"; HOT=""; PRES=""; AGENDA=0; HOX=113; HOY=436; SSX=70; SSY=567; HUX=172; HUY=567; ZEITEN=""
+  while IFS='|' read -r x y s; do
+    case "$x$y" in *[!0-9]*|"") continue ;; esac
+    if [ "$x" -lt 600 ]; then
+      case "$s" in
+        *" HOME OFFICE") HOT=$s; HOX=$x; HOY=$y
+          case "$s" in SORTIE*) STATUS=IN ;; ENTR*) STATUS=OUT ;; esac ;;
+        "SUR SITE") SSX=$x; SSY=$y ;;
+        HUB) HUX=$x; HUY=$y ;;
+        *"Temps de pr"*) p=${s%%[!0-9:]*}; case "$p" in *[0-9]:[0-9][0-9]) PRES=$(minuten "$p") ;; esac ;;
+      esac
+    elif [ "$x" -le 720 ]; then
+      [ "$s" = "23:00" ] && AGENDA=1
+    else
+      case "$s" in [0-2][0-9]:[0-5][0-9]) ZEITEN="$ZEITEN $s" ;; esac
+    fi
+  done < "$1"
+  # halb geladen: Knopf/Zeiten nicht verwenden
+  HALB=0; [ $AGENDA = 1 ] || { [ -n "$HOT" ] && HALB=1; STATUS="?"; PRES=""; ZEITEN=""; }
+  LETZTE=""; BUCH=0; PAUSE=0; aus=""
+  # Zeiten abwechselnd rein/raus; Luecken nach einem Ausstempeln 11:00-14:30 = Mittagspause
+  for s in $(for s in $ZEITEN; do echo $s; done | sort -u); do
+    LETZTE=$s; BUCH=$(( BUCH + 1 )); m=$(minuten $s)
+    if [ $(( BUCH % 2 )) = 0 ]; then aus=$m
+    elif [ -n "$aus" ]; then [ $aus -ge 660 ] && [ $aus -le 870 ] && PAUSE=$(( PAUSE + m - aus )); aus=""; fi
+  done; }
+# Lauf-Ordner (von start.sh angelegt)
+lauf() { D=$(cat $B/aktuell.txt 2>/dev/null); [ -d "$D" ] || { D=$B/lauf; mkdir -p "$D"; }
+  L=$D/log.txt; exec 2>>"$L"; }
+t() { [ $DEBUG = 1 ] && echo "$(date +%T) $*" >> "$L"; }

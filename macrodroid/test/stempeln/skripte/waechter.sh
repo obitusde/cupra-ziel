@@ -1,3 +1,4 @@
+# Waechter: alle 5 min (07:30-19:30) - Arbeitstag? Stand + Standort -> Erinnerung oder nichts
 jetzt
 W=$B/waechter.log
 w() { [ $DEBUG = 1 ] && echo "$(date '+%d.%m. %H:%M') $*" >> $W; }
@@ -16,7 +17,7 @@ feiertag() { y=$1; n=$2
   for f in $(tagnr $y 1 1) $(tagnr $y 1 2) $(( os - 2 )) $(( os + 1 )) $(( os + 39 )) $(( os + 50 )) $(tagnr $y 8 1) $bettag $(tagnr $y 12 25); do
     [ $f = $n ] && return 0; done; return 1; }
 HN=$(tagnr $JJ $MM $TT)
-FREI="{v=frei_bis}"; FN=0
+FN=0
 case "$FREI" in *[0-9].*[0-9].*[0-9]*) fd=${FREI%%.*}; r=${FREI#*.}; fm=${r%%.*}; fy=${r#*.}; fd=${fd#0}; fm=${fm#0}; [ ${#fy} = 2 ] && fy=20$fy; FN=$(tagnr $fy $fm $fd) ;; esac
 GRUND=""
 [ $WT -gt 5 ] && GRUND="Wochenende"
@@ -33,7 +34,7 @@ P=$Z_PRES; [ "$Z_STATUS" = IN ] && P=$(( Z_PRES + (EPOCH - Z_LESE) / 60 ))
 [ "$Z_STATUS" = OUT ] && [ $P -ge $SOLL ] && ruhe "Feierabend ($(hm $P))"
 # spaeter?
 [ -f $B/spaeter.txt ] && [ $EPOCH -lt $(cat $B/spaeter.txt) ] && { w "spaeter - nichts"; exit 0; }
-ort "{last_loc_lat}" "{last_loc_long}"
+ort "$LAT" "$LON"
 DA=""; [ -n "$TYP" ] && [ "$DIST" -le "$RAD" ] && DA=$TYP
 ZIEL=""; MSG=""; GRUND=""; WDH=15
 if [ "$Z_STATUS" = IN ]; then
@@ -53,17 +54,21 @@ elif [ "$Z_BUCH" = 0 ]; then
   esac
 else
   LZ=$(minuten "${Z_LETZTE:-0:00}")
-  if [ $LZ -ge 660 ] && [ $LZ -le 870 ] && [ $NOW -ge $(( LZ + 35 )) ] && [ $NOW -le $(( LZ + 180 )) ]; then
-    ZIEL=EIN; GRUND="Pause vorbei"; MSG="Pause seit $(( NOW - LZ )) min (heute $(hm $P)) - wieder einstempeln?"; fi
+  if [ $LZ -ge 660 ] && [ $LZ -le 870 ] && [ $NOW -ge $(( LZ + 35 )) ] && [ $NOW -lt $(( LZ + 60 )) ]; then
+    ZIEL=EIN; GRUND="Pause vorbei"; MSG="Pause seit $(( NOW - LZ )) min (heute $(hm $P)) - wieder einstempeln?"
+  elif [ $LZ -ge 660 ] && [ $LZ -le 870 ] && [ $NOW -ge $(( LZ + 60 )) ] && [ -n "$DA" ]; then
+    # vielleicht am Badge eingestempelt - einmal nachfragen
+    ZIEL=EIN; GRUND="Nachfrage"; WDH=9999
+    MSG="Seit $Z_LETZTE ausgestempelt ($(( NOW - LZ )) min) - schon wieder eingestempelt? Sonst jetzt einstempeln?"; fi
 fi
 w "Stand=$Z_STATUS heute=$(hm $P) Ort=${TYP:-?} ${DIST:-} m da=${DA:-nein} -> ${ZIEL:-nichts}"
 [ -z "$ZIEL" ] && exit 0
 wahl $ZIEL
 MSG="$MSG → $LABEL"
-V_ZIEL=""; V_ZEIT=0; V_DATUM=""; V_LABEL=""
+V_ZIEL=""; V_ZEIT=0; V_DATUM=""; V_LABEL=""; V_GRUND=""
 [ -f $B/vorschlag-letzter.txt ] && . $B/vorschlag-letzter.txt
-# gleiche Frage (Richtung und Knopf) erst nach WDH Minuten wiederholen
-if [ "$V_ZIEL" = "$ZIEL" ] && [ "$V_LABEL" = "$LABEL" ] && [ "$V_DATUM" = "$HEUTE" ] && [ $(( (EPOCH - V_ZEIT) / 60 )) -lt $WDH ]; then exit 0; fi
+# gleiche Frage (Richtung, Knopf und Grund) erst nach WDH Minuten wiederholen
+if [ "$V_ZIEL" = "$ZIEL" ] && [ "$V_LABEL" = "$LABEL" ] && [ "$V_GRUND" = "$GRUND" ] && [ "$V_DATUM" = "$HEUTE" ] && [ $(( (EPOCH - V_ZEIT) / 60 )) -lt $WDH ]; then exit 0; fi
 { echo "V_ZIEL=$ZIEL"; echo "V_ZEIT=$EPOCH"; echo "V_DATUM=$HEUTE"; echo "V_LABEL='$LABEL'"; echo "V_GRUND='$GRUND'"; } > $B/vorschlag-letzter.txt
 cp $B/vorschlag-letzter.txt $B/vorschlag.txt
 w "Vorschlag: $MSG"

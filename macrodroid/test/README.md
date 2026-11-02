@@ -384,3 +384,36 @@ Christof: Erinnerung zur Mittagspause **ab 11:45**, alle 15 min bis ausgestempel
 - Lokal getestet (mksh, 15 Fälle): Ankunft, Home Office, Mittagspause, 8 h 25, Ortswechsel-Korrektur, Kantine weit weg,
   Stand nach Badge (Le Chenit), alter `zustand.txt` ohne `Z_NAME`, Spaeter + Wiederholung, Wochenende.
 - Unsicher: `{not_title}` (aus Beispielen, nicht am Pixel getestet), `CheckTextOnScreenAction` mit globaler Variable.
+
+## Stempeln v4 (2.11.2026) – dünne Makros, Skripte per „Stempeln Update“
+
+Anlass 2.11.2026: (1) Christof stempelte mittags am Badge wieder ein → der Wächter hielt ihn für „in der Pause“, „8 h 25
+voll“ kam erst nach einem Stand-Lauf (17:15). (2) 17:22 [Stempeln] auf „ausstempeln?“: die Seite zeigte „ENTRÉE“, obwohl
+eingestempelt – die **Agenda war leer** (Stunden-Felder ohne Text), die Seite also nur halb geladen. Die Sicherung tippte
+nichts, stellte aber die falsche Gegenfrage „einstempeln?“. (3) Das Importieren von fünf Makros bei jeder Änderung nervt.
+
+- **Aufbau:** Die Makros sind nur noch Hüllen (`. $S/kopf.sh; . $S/<name>.sh`) und reichen Magic Text als Variablen
+  durch (`LAT`, `LON`, `FREI`, `TEXT`; Seite → `Download/stempeln/seite-roh.txt`, ohne `ticket=`). Die Logik liegt in
+  `Download/stempeln/skripte/` auf dem Handy. Quellen: `stempeln/skripte/*.sh`, Paket `stempeln/paket.txt`
+  (`#STEMPELPAKET v`, `#DATEI name`, …, `#ENDE v`), gebaut mit `stempeln/paket-bauen.py`.
+- **`Stempeln Update v4`** (nur wenn Christof es startet): HTTP-Anfrage (`HttpRequestAction`, Vorlage aus
+  BespredeL/MacroDroid, Antwort → Variable `stempel_paket`) auf
+  `https://raw.githubusercontent.com/obitusde/cupra-ziel/main/macrodroid/test/stempeln/paket.txt`, Shell prüft
+  Anfang/Ende/Version, packt nach `skripte-neu` aus und tauscht (alte Fassung → `skripte-alt`). GitHub nicht erreichbar:
+  beim ersten Mal die eingebaute Fassung, sonst bleibt alles. Die **private** Fassung (Drive) schreibt außerdem
+  `Download/stempeln/orte.txt` (Ortsliste, nie im Repo; `kopf.sh` liest sie).
+- **Seite fertig geladen?** Nach dem Öffnen `CheckTextOnScreenAction` „23:00“ (Stundenzahl der Agenda) → `agenda_ok`,
+  bis 8× 3 s warten. `stand()` setzt `AGENDA`/`HALB`; ohne Agenda gilt der Knopf-Text nicht → nichts tippen, Meldung
+  „Stempelseite nicht fertig geladen“, Zustand bleibt.
+- **Keine Gegenfrage mehr:** War Christof schon gestempelt oder passt der Ort nicht mehr, tippt `haupt.sh` nichts und
+  `ende.sh` meldet „… – Stand gemerkt“ (Zustand aktualisiert, Vorschlag gelöscht).
+- **Wächter v4:** ab 07:30 (Shizuku-Prüfung 07:30, ohne Skriptdatei), Knöpfe **[Stempeln] [Schon gestempelt] [Spaeter]**
+  ([Schon gestempelt] = `Stempeln Stand v4`). „Pause vorbei“ nur bis 60 min nach dem Ausstempeln, danach einmal
+  „Seit 12:02 ausgestempelt (63 min) – schon wieder eingestempelt? Sonst jetzt einstempeln?“ (nur an bekanntem Ort).
+  Wiederholung vergleicht jetzt auch den Grund.
+- **Knopf ohne Ortsname:** „→ SUR SITE“ (Christof 2.11.).
+- Lokal getestet (mksh): Installation (GitHub ok / leer / halb), Hülle ohne Skripte, Ankunft, Home Office, Mittagspause,
+  8 h 25, Ortswechsel, Kantine, schon ausgestempelt per Badge, halb geladene echte Seite vom 2.11. (Stempeln + Stand),
+  Pause vorbei + Nachfrage, Spaeter, Wochenende, frei.
+- Unsicher: HTTP-Antwort (~17 KB) in einer Variable und dann per Magic Text ins Shell-Skript; drei Knöpfe in der
+  Benachrichtigung (Platz); „23:00“ als Ladekennzeichen (in allen echten Seiten-Dumps vorhanden, in der halb geladenen nicht).

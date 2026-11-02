@@ -1,14 +1,11 @@
-D=$(cat $B/aktuell.txt 2>/dev/null); [ -d "$D" ] || { D=$B/lauf; mkdir -p "$D"; }
-L=$D/log.txt; exec 2>>"$L"
-t() { [ $DEBUG = 1 ] && echo "$(date +%T) $*" >> "$L"; }
+# Stempeln: Stand lesen, Knopf waehlen, tippen (oder bewusst nicht)
+lauf
 jetzt
-grep -v 'ticket=' > "$D/seite-vor.txt" <<'ENDE_SEITE'
-{v=seite}
-ENDE_SEITE
+cp $B/seite-roh.txt "$D/seite-vor.txt" 2>/dev/null
 elemente "$D/seite-vor.txt" > "$D/elemente-vor.txt"
 stand "$D/elemente-vor.txt"
-t "Seite vorher: Status=$STATUS Praesenz=$PRES Letzte=$LETZTE Buchungen=$BUCH"
-ort "{last_loc_lat}" "{last_loc_long}"
+t "Seite vorher: Status=$STATUS Praesenz=$PRES Letzte=$LETZTE Buchungen=$BUCH Agenda=$AGENDA"
+ort "$LAT" "$LON"
 t "Standort -> $TYP $NAME $DIST m (Radius $RAD)"
 # Vorschlag (Knopf in der Erinnerung), gilt 30 min
 WUNSCH=""; V_ZIEL=""; V_ZEIT=0; V_LABEL=""
@@ -21,14 +18,16 @@ Z_DATUM=""; Z_ORT=""; Z_NAME=""; [ -f $B/zustand.txt ] && . $B/zustand.txt
 if [ "$STATUS" = IN ]; then wahl AUS; else wahl EIN; fi
 t "Wunsch '${WUNSCH:-keiner}' ($V_LABEL), jetzt: $LABEL"
 AKTION=keine; KORR=""
-if [ -z "$PRES" ] && [ "$STATUS" = "?" ]; then
-  ERGT="Stempelseite nicht gelesen - nichts gestempelt, bitte selbst pruefen"
+if [ "$HALB" = 1 ]; then
+  ERGT="Stempelseite nicht fertig geladen (30 s gewartet) - nichts getippt, bitte selbst pruefen"
+elif [ "$STATUS" = "?" ]; then
+  ERGT="Stempelseite nicht gelesen - nichts getippt, bitte selbst pruefen"
 elif [ "$WUNSCH" = EIN ] && [ "$STATUS" = IN ]; then
-  ERGT="Du bist schon eingestempelt - nichts getippt"; KORR=AUS
+  ERGT="Du warst schon eingestempelt - nichts getippt"; KORR=1
 elif [ "$WUNSCH" = AUS ] && [ "$STATUS" = OUT ]; then
-  ERGT="Du bist schon ausgestempelt - nichts getippt"; KORR=EIN
+  ERGT="Du warst schon ausgestempelt - nichts getippt"; KORR=1
 elif [ -n "$V_LABEL" ] && [ "$V_LABEL" != "$LABEL" ]; then
-  ERGT="Ort passt nicht mehr zur Erinnerung ($V_LABEL, jetzt $LABEL) - nichts getippt"; KORR=$WUNSCH
+  ERGT="Ort passt nicht mehr zur Erinnerung ($V_LABEL, jetzt $LABEL) - nichts getippt. Stimmt $LABEL, starte Stempeln nochmal"; KORR=1
 elif [ -z "$KTYP" ]; then
   AKTION=manuell
   ERGT="Unbekannter Ort"
