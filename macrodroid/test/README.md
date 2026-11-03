@@ -417,3 +417,15 @@ nichts, stellte aber die falsche Gegenfrage „einstempeln?“. (3) Das Importie
   Pause vorbei + Nachfrage, Spaeter, Wochenende, frei.
 - Unsicher: HTTP-Antwort (~17 KB) in einer Variable und dann per Magic Text ins Shell-Skript; drei Knöpfe in der
   Benachrichtigung (Platz); „23:00“ als Ladekennzeichen (in allen echten Seiten-Dumps vorhanden, in der halb geladenen nicht).
+
+### v4.1 (3.11.2026) – Zuhause ab 07:15, Knopf [Heute nicht]
+
+- **Wächter v4.1** wacht um **07:00** auf (Shizuku-Prüfung 07:00), Erinnerungen erst ab `START` (in `kopf.sh`, 435 = 07:15)
+  → spätere Zeitänderungen ab 07:00 gehen ohne Import, nur über „Stempeln Update“. Di/Fr zu Hause ab 07:15.
+- **Zuhause-Erinnerung** (Di/Fr ab 07:15, Mo/Mi/Do ab 08:15) mit eigener Kennung „Stempel-Heimfrage“ → eigene Benachrichtigung
+  **[Stempeln] [Schon gestempelt] [Heute nicht]**. Neues Makro `Stempeln Heute nicht v4.1` (`heutenicht.sh`) schreibt
+  `heute-nicht.txt` → heute keine Zuhause-Erinnerung mehr; Büro-Erinnerungen bleiben. Zuhause-Erinnerungen kommen ohnehin
+  nur, solange der Standort zu Hause ist.
+- Skripte v4.1 brauchen Wächter v4.1 (sonst keine Zuhause-Erinnerung, der alte Wächter kennt „Stempel-Heimfrage“ nicht).
+- Lokal getestet: 07:10 nichts, 07:15 Heimfrage, Heute nicht → nichts mehr zu Hause, 08:10 im Büro Ankunft; Mo 08:15
+  Heimfrage; Wochenende-Ruhe um 07:00.

@@ -1,4 +1,4 @@
-# Waechter: alle 5 min (07:30-19:30) - Arbeitstag? Stand + Standort -> Erinnerung oder nichts
+# Waechter: alle 5 min (07:00-19:30, Erinnerungen ab START) - Arbeitstag? Stand + Standort -> Erinnerung oder nichts
 jetzt
 W=$B/waechter.log
 w() { [ $DEBUG = 1 ] && echo "$(date '+%d.%m. %H:%M') $*" >> $W; }
@@ -32,6 +32,8 @@ Z_DATUM=""; Z_STATUS=OUT; Z_PRES=0; Z_LESE=$EPOCH; Z_LETZTE=""; Z_BUCH=0; Z_ORT=
 [ "$Z_DATUM" != "$HEUTE" ] && { Z_STATUS=OUT; Z_PRES=0; Z_LESE=$EPOCH; Z_LETZTE=""; Z_BUCH=0; Z_ORT=""; Z_NAME=""; }
 P=$Z_PRES; [ "$Z_STATUS" = IN ] && P=$(( Z_PRES + (EPOCH - Z_LESE) / 60 ))
 [ "$Z_STATUS" = OUT ] && [ $P -ge $SOLL ] && ruhe "Feierabend ($(hm $P))"
+# vor START (07:15) noch keine Erinnerungen
+[ $NOW -lt $START ] && exit 0
 # spaeter?
 [ -f $B/spaeter.txt ] && [ $EPOCH -lt $(cat $B/spaeter.txt) ] && { w "spaeter - nichts"; exit 0; }
 ort "$LAT" "$LON"
@@ -47,9 +49,11 @@ if [ "$Z_STATUS" = IN ]; then
       ZIEL=AUS; GRUND="Buero verlassen"; MSG="Buero verlassen (heute $(hm $P)) - ausstempeln?"; fi
   fi
 elif [ "$Z_BUCH" = 0 ]; then
+  # [Heute nicht] in der Zuhause-Erinnerung: heute keine Zuhause-Erinnerung mehr
+  [ "$DA" = HO ] && [ "$(cat $B/heute-nicht.txt 2>/dev/null)" = "$HEUTE" ] && DA=""
   case "$DA" in
     SS|HUB) ZIEL=EIN; GRUND="Ankunft"; MSG="Angekommen - einstempeln?"; [ $NOW -lt 480 ] && WDH=9999 ;;
-    HO) if { [ $WT = 2 ] || [ $WT = 5 ]; } && [ $NOW -ge 450 ] && [ $NOW -lt 660 ]; then ZIEL=EIN; GRUND="Home Office"; MSG="Zu Hause - einstempeln?"
+    HO) if { [ $WT = 2 ] || [ $WT = 5 ]; } && [ $NOW -ge $START ] && [ $NOW -lt 660 ]; then ZIEL=EIN; GRUND="Home Office"; MSG="Zu Hause - einstempeln?"
         elif [ $NOW -ge 495 ] && [ $NOW -lt 660 ]; then ZIEL=EIN; GRUND="Home Office"; MSG="Noch zu Hause - heute Home Office? Einstempeln?"; fi ;;
   esac
 else
@@ -72,4 +76,4 @@ if [ "$V_ZIEL" = "$ZIEL" ] && [ "$V_LABEL" = "$LABEL" ] && [ "$V_GRUND" = "$GRUN
 { echo "V_ZIEL=$ZIEL"; echo "V_ZEIT=$EPOCH"; echo "V_DATUM=$HEUTE"; echo "V_LABEL='$LABEL'"; echo "V_GRUND='$GRUND'"; } > $B/vorschlag-letzter.txt
 cp $B/vorschlag-letzter.txt $B/vorschlag.txt
 w "Vorschlag: $MSG"
-signal "$MSG"
+if [ "$GRUND" = "Home Office" ]; then signal "$MSG" Stempel-Heimfrage; else signal "$MSG"; fi

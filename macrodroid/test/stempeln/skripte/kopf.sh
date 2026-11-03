@@ -1,16 +1,19 @@
 # Stempel-Skripte - gemeinsamer Kopf (Version siehe SKV)
 # Wird von den Makro-Huellen geladen: vorher gesetzt LAT LON FREI TEXT (Magic Text aus MacroDroid)
-SKV=4.0
+SKV=4.1
 B=/sdcard/Download/stempeln
 mkdir -p $B
 DEBUG=0
 SOLL=505
+# Erinnerungen erst ab START (Minuten; 435 = 07:15) - der Waechter wacht schon um 07:00 auf
+START=435
 # Orte: eigene Datei auf dem Handy (schreibt das private Makro "Stempeln Update"), nie im Repo
 ORTE=$(cat $B/orte.txt 2>/dev/null)
 # Meldung mit Uhrzeit vorne: note TEXT TITEL TAG
 note() { cmd notification post -S bigtext -t "$2" "$3" "$(date +%H:%M) · $1" </dev/null >/dev/null 2>&1; }
-# Vorschlag an den Waechter: Text steht im Titel (MacroDroid zeigt not_title), Kennung "Stempel-Vorschlag" im Text
-signal() { cmd notification post -S bigtext -t "$(date +%H:%M) · $1" vorschlag "Stempel-Vorschlag" </dev/null >/dev/null 2>&1; }
+# Vorschlag an den Waechter: Text steht im Titel (MacroDroid zeigt not_title), Kennung im Text:
+# "Stempel-Vorschlag" = Knoepfe [Stempeln] [Schon gestempelt] [Spaeter], "Stempel-Heimfrage" = zu Hause, [Heute nicht] statt [Spaeter]
+signal() { cmd notification post -S bigtext -t "$(date +%H:%M) · $1" vorschlag "${2:-Stempel-Vorschlag}" </dev/null >/dev/null 2>&1; }
 jetzt() { if [ -n "$T_JETZT" ]; then set -- $T_JETZT; else set -- $(date '+%Y %m %d %H %M %u %s'); fi
   JJ=$1; MM=${2#0}; TT=${3#0}; HH=${4#0}; MI=${5#0}; WT=$6; EPOCH=$7; HEUTE=$1-$2-$3; NOW=$(( ${HH:-0}*60 + ${MI:-0} )); }
 hm() { echo "$(( $1 / 60 )):$(( $1 % 60 / 10 ))$(( $1 % 10 ))"; }
