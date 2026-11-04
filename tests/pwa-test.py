@@ -1,8 +1,9 @@
-# PWA-Test mit Playwright (Python) und nachgebautem Apps-Script-Dienst. Version 0.4.0 (19.10.2026)
+# PWA-Test mit Playwright (Python) und nachgebautem Apps-Script-Dienst. Version 0.5.0 (4.11.2026)
 # 0.2.0: Name mitkopieren, Methode K, Version im Kopf, Service Worker
 # 0.3.0: Favoriten (POST liste/speichern/loeschen/pruefen), Verlauf, Schnellzugriff ?oeffne=, Rückkehr ?zurueck=
 # 0.4.0: „Ans Auto senden" über den MacroDroid-Webhook (nachgebaut), Doppeltipp-Sperre, kein Netz → kopieren;
 #        Schnellzugriff nur noch Karte
+# 0.5.0: Webhook liegt im Apps Script (webhookSetzen/senden, Flag aus pruefen/liste), lokaler Eintrag wird übernommen
 # Aufruf: python3 tests/pwa-test.py . <ordner-fuer-screenshots>
 import json, sys, threading, http.server, functools
 from urllib.parse import quote, urlparse, parse_qs
@@ -21,6 +22,8 @@ ANTWORT = {"ok": True, "version": "0.3.0", "name": "Café am Markt", "lat": 51.3
 SCHLUESSEL = "geheim123"
 favs = [{"id": "f1", "name": "Büro Le Brassus", "adresse": "Route de France 16, 1348 Le Brassus", "lat": None, "lon": None, "reihenfolge": 1}]
 anfragen = []
+script_webhook = {'url': ''}
+webhooks = []
 
 def dienst(route):
     req = route.request
@@ -29,9 +32,16 @@ def dienst(route):
         if d.get("schluessel") != SCHLUESSEL:
             body = {"ok": False, "fehler": "Schlüssel falsch"}
         elif d["aktion"] == "pruefen":
-            body = {"ok": True}
+            body = {"ok": True, "webhook": bool(script_webhook['url'])}
+        elif d["aktion"] == "webhookSetzen":
+            script_webhook['url'] = d.get("webhook", "")
+            body = {"ok": True, "webhook": bool(script_webhook['url'])}
+        elif d["aktion"] == "senden":
+            if not script_webhook['url']: body = {"ok": False, "fehler": "Kein Webhook hinterlegt", "webhook": False}
+            else:
+                webhooks.append(script_webhook['url'] + "?ziel=" + quote(d["ziel"])); body = {"ok": True, "gesendet": True}
         elif d["aktion"] == "liste":
-            body = {"ok": True, "favoriten": favs}
+            body = {"ok": True, "webhook": bool(script_webhook['url']), "favoriten": favs}
         elif d["aktion"] == "speichern":
             f = d["fav"]
             alt = next((x for x in favs if x["id"] == f.get("id")), None)
@@ -53,8 +63,8 @@ with sync_playwright() as p:
     ctx.route("https://dienst.test/**", dienst)
     navigiert = []
     ctx.route("intent://**", lambda r: (navigiert.append(r.request.url), r.abort()))
-    webhooks = []
-    ctx.route("https://trigger.macrodroid.com/**", lambda r: (webhooks.append(r.request.url), r.fulfill(status=200, body="ok")))
+    direkt = []
+    ctx.route("https://trigger.macrodroid.com/**", lambda r: (direkt.append(r.request.url), r.fulfill(status=200, body="ok")))
     pg = ctx.new_page(); logs = []
     pg.on("pageerror", lambda e: logs.append("PAGEERROR " + str(e)))
 
@@ -99,31 +109,39 @@ with sync_playwright() as p:
     pg.goto("http://127.0.0.1:8765/" + D + "&zurueck=M-K"); pg.wait_for_timeout(300)
     print("Rückkehr K:", pg.inner_text("#status")[:40])
 
-    # 7. Ans Auto senden (Webhook)
-    print("Ohne Webhook – Senden-Knopf versteckt:", pg.is_hidden("#knopfSenden"))
+    # 7. Ans Auto senden: Webhook im Apps Script
+    print("Ohne Webhook – Senden-Knopf versteckt:", pg.is_hidden("#knopfSenden"), "| Entfernen versteckt:", pg.is_hidden("#webhookEntfernen"))
     pg.click("#einstellungen summary")
-    pg.fill("#webhook", "https://example.com/x"); pg.click("#webhookSpeichern")
+    pg.fill("#webhook", "https://example.com/x"); pg.click("#webhookSpeichern"); pg.wait_for_timeout(200)
     print("Falscher Webhook:", pg.inner_text("#webhookStatus"))
-    pg.fill("#webhook", " https://trigger.macrodroid.com/abc-123/cupra?ziel=alt "); pg.click("#webhookSpeichern")
-    print("Webhook bereinigt:", pg.input_value("#webhook"), "|", pg.inner_text("#webhookStatus")[:40])
+    pg.fill("#webhook", " https://trigger.macrodroid.com/abc-123/cupra?ziel=alt "); pg.click("#webhookSpeichern"); pg.wait_for_timeout(500)
+    print("Im Script gespeichert:", script_webhook['url'], "|", pg.inner_text("#webhookStatus")[:40], "| Feld leer:", pg.input_value("#webhook") == "")
+    print("Nicht im Handy-Speicher:", pg.evaluate("localStorage.getItem('cupra-ziel.webhook')"), "| Flag:", pg.evaluate("localStorage.getItem('cupra-ziel.webhookImScript')"))
     pg.goto("http://127.0.0.1:8765/" + D + "&text=" + quote(text))
     pg.wait_for_selector("#ergebnis:not([hidden])", timeout=5000)
     navigiert.clear()
     print("Senden-Knopf sichtbar:", pg.is_visible("#knopfSenden"), "| Öffnen-Knopf Klasse:", pg.get_attribute("#knopfOeffnen", "class"))
-    pg.click("#knopfSenden"); pg.wait_for_timeout(400)
+    pg.click("#knopfSenden"); pg.wait_for_timeout(500)
     pg.click("#knopfSenden"); pg.wait_for_timeout(400)
     print("Webhook-Aufrufe (Doppeltipp → 1):", len(webhooks), "|", webhooks[-1] if webhooks else "-")
-    print("Meldung:", pg.inner_text("#meldung"), "| kein Intent:", not navigiert)
+    print("Meldung:", pg.inner_text("#meldung"), "| kein Intent:", not navigiert, "| nie direkt vom Handy:", not direkt)
     pg.reload(); pg.wait_for_timeout(500)                     # Sperre gilt 20 s im Speicher der Seite
-    pg.click("#favListe .fav >> nth=0"); pg.wait_for_timeout(400)
+    pg.click("#favListe .fav >> nth=0"); pg.wait_for_timeout(500)
     print("Favorit sendet:", webhooks[-1].split("?ziel=")[1] if len(webhooks) > 1 else "-", "|", pg.inner_text("#favHinweis"))
-    # kein Netz zum Webhook → kopieren und öffnen
-    ctx.unroute("https://trigger.macrodroid.com/**")
-    ctx.route("https://trigger.macrodroid.com/**", lambda r: r.abort())
-    pg.evaluate("window.cupraZiel.sendeAnsAuto('Teststraße 1, 1000 Lausanne')"); pg.wait_for_timeout(2200)
-    print("Ohne Netz → Zwischenablage:", pg.evaluate("navigator.clipboard.readText()"), "| Intent:", navigiert[-1][:30] if navigiert else "-")
-    pg.click("#einstellungen summary"); pg.fill("#webhook", ""); pg.click("#webhookSpeichern")
-    print("Webhook entfernt:", pg.inner_text("#webhookStatus"), "| Senden versteckt:", pg.is_hidden("#knopfSenden"))
+    # Speicher des Handys geleert (nur Webhook-Flag weg): kommt beim Laden vom Script zurück
+    pg.evaluate("localStorage.removeItem('cupra-ziel.webhookImScript')"); pg.reload(); pg.wait_for_timeout(700)
+    print("Flag nach Neuladen vom Script:", pg.evaluate("localStorage.getItem('cupra-ziel.webhookImScript')"), "| Hinweis:", pg.inner_text("#favHinweis"))
+    # Script meldet Fehler beim Senden → kopieren und öffnen
+    script_webhook['url'] = ""
+    pg.evaluate("window.cupraZiel.sendeAnsAuto('Teststraße 1, 1000 Lausanne')"); pg.wait_for_timeout(2500)
+    print("Script ohne Webhook → Meldung:", pg.inner_text("#meldung")[:40], "| Zwischenablage:", pg.evaluate("navigator.clipboard.readText()"), "| Intent:", navigiert[-1][:30] if navigiert else "-")
+    print("Flag danach:", pg.evaluate("localStorage.getItem('cupra-ziel.webhookImScript')"), "| Senden versteckt:", pg.is_hidden("#knopfSenden"))
+    # alter lokaler Webhook (Ladeplanung) wird ins Script übernommen
+    pg.evaluate("localStorage.setItem('cupra-ziel.webhook', 'https://trigger.macrodroid.com/lokal-9/cupra')"); pg.reload(); pg.wait_for_timeout(900)
+    print("Lokaler Webhook übernommen:", script_webhook['url'])
+    # Entfernen
+    pg.evaluate("document.getElementById('webhookEntfernen').click()"); pg.wait_for_timeout(500)
+    print("Webhook entfernt:", pg.text_content("#webhookStatus"), "| Script:", repr(script_webhook['url']), "| Senden versteckt:", pg.is_hidden("#knopfSenden"))
 
     # 8. Fehlerfall, Manifest
     pg2 = ctx.new_page()

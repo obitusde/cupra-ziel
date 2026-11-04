@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
   Cupra-Ziel — PWA
-  Version 0.3.0 (19.10.2026)
+  Version 0.4.0 (4.11.2026)
 
   Google Maps → Teilen → Cupra-Ziel. Die App schickt den geteilten Text an das Apps Script
   (Web-Dienst), bekommt Adresse und Koordinaten zurück und bietet „Ans Auto senden" (über MacroDroid)
@@ -26,6 +26,12 @@
            Favoriten und Verlauf senden beim Antippen direkt; ohne Webhook oder ohne Netz wie bisher kopieren
            und öffnen. Aufgeräumt: Schnellzugriffe und Testseiten außer „Karte" entfernt (öffneten nur die
            Startseite von myCupra)
+    0.4.0  Webhook im Apps Script statt im Handy-Speicher (Christof 4.11.2026: die Adresse war aus dem
+           localStorage verschwunden): „Ans Auto senden" geht App → Apps Script (mit Schlüssel) → MacroDroid.
+           Die Adresse wird in den Einstellungen einmal ans Script geschickt und liegt dort in den Script
+           Properties. Die App merkt sich nur „Webhook hinterlegt" (kommt bei jedem Laden vom Script zurück).
+           Ein alter lokaler Eintrag (Ladeplanung) wird automatisch ins Script übernommen und bleibt als
+           Rückfall. Chrome wird gebeten, den Speicher dauerhaft zu halten (storage.persist).
 -->
 <html lang="de">
 <head>
@@ -33,7 +39,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cupra-Ziel</title>
 <meta name="theme-color" content="#161616">
-<link rel="manifest" href="manifest.json?v=0.3.0">
+<link rel="manifest" href="manifest.json?v=0.4.0">
 <link rel="icon" href="icon-192.png">
 <style>
   :root {
@@ -162,10 +168,11 @@
   <button class="breit" id="schluesselSpeichern">Schlüssel speichern und prüfen</button>
   <div id="schluesselStatus" class="leise"></div>
   <hr style="border:0;border-top:1px solid var(--rand);margin:16px 0">
-  <p class="leise"><b>Ans Auto senden</b> braucht MacroDroid mit dem Makro „Cupra" (<a href="https://github.com/obitusde/cupra-ziel/tree/main/macrodroid" target="_blank" rel="noopener">Anleitung</a>). Die Webhook-Adresse steht im Makro beim Auslöser und bleibt nur auf diesem Handy (gilt auch für die Ladeplanung).</p>
+  <p class="leise"><b>Ans Auto senden</b> braucht MacroDroid mit dem Makro „Cupra" (<a href="https://github.com/obitusde/cupra-ziel/tree/main/macrodroid" target="_blank" rel="noopener">Anleitung</a>). Die Webhook-Adresse steht im Makro beim Auslöser. Sie wird einmal ans Apps Script geschickt (dafür muss der Schlüssel oben stimmen) und liegt dort geheim – nicht auf dem Handy.</p>
   <label class="feld" for="webhook">MacroDroid-Webhook</label>
   <input type="text" id="webhook" autocomplete="off" spellcheck="false" placeholder="https://trigger.macrodroid.com/…/cupra">
-  <button class="breit" id="webhookSpeichern">Webhook speichern</button>
+  <button class="breit" id="webhookSpeichern">Webhook im Script speichern</button>
+  <button class="breit" id="webhookEntfernen">Webhook entfernen</button>
   <div id="webhookStatus" class="leise"></div>
 </details>
 
@@ -180,7 +187,7 @@
 
 <script>
 'use strict';
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.4.0';
 const PAKET = 'com.cupra.mycupra';
 
 // myCupra nimmt cupra:/<route> an (DeepLinkManager, APK 2.15.0), z. B. cupra://map → Route /map.
@@ -203,7 +210,8 @@ const SPEICHER = {
   schluessel: 'cupra-ziel.schluessel',
   favoriten: 'cupra-ziel.favoriten',     // Zwischenspeicher der Liste aus dem Sheet (sofort sichtbar, offline)
   verlauf: 'cupra-ziel.verlauf',
-  webhook: 'cupra-ziel.webhook',         // MacroDroid-Webhook (mit Geräte-ID) – nur hier, nie im Repo
+  webhook: 'cupra-ziel.webhook',         // alter lokaler MacroDroid-Webhook (nur noch Rückfall/Übernahme, nie im Repo)
+  webhookImScript: 'cupra-ziel.webhookImScript', // '1' = das Apps Script hat einen Webhook (Zwischenspeicher)
 };
 // Gleiche Prüfung in der Ladeplanung (liest denselben Eintrag, gleicher Ursprung obitusde.github.io)
 const WEBHOOK_MUSTER = /^https:\/\/trigger\.macrodroid\.com\/[A-Za-z0-9-]+\/[A-Za-z0-9_-]+$/;
@@ -219,7 +227,16 @@ function liesJson(k, rueckfall) { try { const v = JSON.parse(lies(k)); return v 
 function methode() { const m = lies(SPEICHER.methode); return METHODEN[m] ? m : STANDARD_METHODE; }
 function mitName() { return lies(SPEICHER.mitName) !== '0'; }
 function schluessel() { return (lies(SPEICHER.schluessel) || '').trim(); }
-function webhook() { const w = (lies(SPEICHER.webhook) || '').trim(); return WEBHOOK_MUSTER.test(w) ? w : ''; }
+function webhook() { const w = (lies(SPEICHER.webhook) || '').trim(); return WEBHOOK_MUSTER.test(w) ? w : ''; }   // alter lokaler Eintrag
+function webhookImScript() { return lies(SPEICHER.webhookImScript) === '1'; }
+function setzeWebhookFlag(an) {
+  an = !!an;
+  if (webhookImScript() === an) return;
+  schreib(SPEICHER.webhookImScript, an ? '1' : '0');
+  if (typeof zeigeSendeart === 'function') { zeigeSendeart(); zeigeWebhookStatus(); zeigeFavoriten(); }
+}
+/** 'script' = über das Apps Script (Schlüssel + Webhook dort), 'direkt' = alter lokaler Eintrag, '' = nicht möglich. */
+function senderart() { return schluessel() && webhookImScript() ? 'script' : webhook() ? 'direkt' : ''; }
 /** Eingabe säubern: Abfrage (?ziel=…) und Schrägstrich am Ende weg. */
 function bereinigeWebhook(t) {
   t = String(t || '').trim();
@@ -254,31 +271,32 @@ async function kopiereUndOeffne(text) {
 }
 
 /**
- * Ans Auto senden über MacroDroid: Webhook …/cupra?ziel=<Text>. Das Makro öffnet myCupra, fügt den Text ein,
- * tippt den ersten Treffer und „An das Fahrzeug senden". Der Webhook liefert keinen CORS-Kopf → no-cors,
- * die Antwort ist nicht lesbar; ob es geklappt hat, zeigt MacroDroid („Ziel gesendet"). Ohne Webhook
- * oder ohne Netz: wie bisher kopieren und myCupra öffnen.
+ * Ans Auto senden über MacroDroid: Das Apps Script ruft den Webhook …/cupra?ziel=<Text> auf (Adresse in den
+ * Script Properties, die App schickt nur Schlüssel + Ziel). Das Makro öffnet myCupra, fügt den Text ein, tippt
+ * den ersten Treffer und „An das Fahrzeug senden"; ob es geklappt hat, zeigt MacroDroid („Ziel gesendet").
+ * Rückfall: alter lokaler Webhook direkt (no-cors). Ohne beides oder ohne Netz: kopieren und myCupra öffnen.
  */
 let letzterVersand = { text: '', zeit: 0 };
 async function sendeAnsAuto(text) {
-  const w = webhook();
-  if (!w) return kopiereUndOeffne(text);
+  const art = senderart();
+  if (!art) return kopiereUndOeffne(text);
   if (letzterVersand.text === text && Date.now() - letzterVersand.zeit < SENDEN_SPERRE_MS) { melde('Wird schon gesendet …'); return; }
   letzterVersand = { text: text, zeit: Date.now() };
   melde('Wird ans Auto gesendet …', 6000);
   try {
-    await fetch(w + '?ziel=' + encodeURIComponent(text), { mode: 'no-cors', cache: 'no-store' });
+    if (art === 'script') await favAnfrage({ aktion: 'senden', ziel: text });
+    else await fetch(webhook() + '?ziel=' + encodeURIComponent(text), { mode: 'no-cors', cache: 'no-store' });
     melde('An MacroDroid geschickt – myCupra öffnet gleich. Handy entsperrt lassen.', 6000);
   } catch (fehler) {
     letzterVersand.zeit = 0;
-    melde('Nicht gesendet (kein Netz?) – Adresse wird kopiert', 3000);
+    melde('Nicht gesendet (' + (fehler instanceof TypeError ? 'kein Netz?' : fehler.message) + ') – Adresse wird kopiert', 3500);
     setTimeout(() => kopiereUndOeffne(text), 1500);
   }
 }
 
 /** Knöpfe und Texte je nachdem, ob ein Webhook eingetragen ist. */
 function zeigeSendeart() {
-  const direkt = !!webhook();
+  const direkt = !!senderart();
   $('knopfSenden').hidden = !direkt;
   $('knopfOeffnen').className = direkt ? 'breit' : 'gross';
   $('ergAnleitung').innerHTML = direkt
@@ -310,6 +328,7 @@ async function favAnfrage(daten) {
   const url = await dienstUrl();
   const r = await fetch(url, { method: 'POST', body: JSON.stringify(Object.assign({ schluessel: schluessel() }, daten)) });
   const j = await r.json();
+  if ('webhook' in j) setzeWebhookFlag(j.webhook);
   if (!j.ok) throw new Error(j.fehler || 'Unbekannter Fehler');
   return j;
 }
@@ -442,7 +461,7 @@ function zeigeFavoriten() {
     return;
   }
   $('favHinweis').textContent = !favoriten.length ? 'Noch keine Favoriten. Nach dem Teilen „☆ Als Favorit" tippen.'
-    : bearbeiten ? '' : webhook() ? 'Antippen = direkt ans Auto senden.' : 'Antippen = kopieren und myCupra öffnen.';
+    : bearbeiten ? '' : senderart() ? 'Antippen = direkt ans Auto senden.' : 'Antippen = kopieren und myCupra öffnen.';
   favoriten.forEach((f, i) => {
     const zeile = el('div', 'favzeile');
     const k = el('button', 'fav');
@@ -468,7 +487,7 @@ function setzeFavoriten(liste) {
 
 async function ladeFavoriten() {
   if (!schluessel()) { zeigeFavoriten(); return; }
-  try { setzeFavoriten((await favAnfrage({ aktion: 'liste' })).favoriten); }
+  try { setzeFavoriten((await favAnfrage({ aktion: 'liste' })).favoriten); uebernehmeLokalenWebhook(); }
   catch (fehler) { $('favHinweis').textContent = 'Favoriten nicht aktualisiert: ' + fehler.message + (favoriten.length ? ' (zeige gespeicherte)' : ''); }
 }
 
@@ -528,16 +547,36 @@ async function speichereSchluessel() {
   } catch (fehler) { $('schluesselStatus').textContent = '✕ ' + fehler.message; zeigeFavoriten(); }
 }
 
-function speichereWebhook() {
+function zeigeWebhookStatus(text) {
+  $('webhookStatus').textContent = text || (webhookImScript() ? '✓ Webhook liegt im Apps Script.' : webhook() ? 'Nur lokal auf diesem Handy (wird mit dem Schlüssel ins Script übernommen).' : 'Noch kein Webhook hinterlegt.');
+  $('webhookEntfernen').hidden = !webhookImScript() && !webhook();
+}
+
+async function speichereWebhook() {
   const w = bereinigeWebhook($('webhook').value);
   $('webhook').value = w;
-  if (w && !WEBHOOK_MUSTER.test(w)) {
-    $('webhookStatus').textContent = '✕ Sieht nicht aus wie https://trigger.macrodroid.com/<Geräte-ID>/cupra';
-    return;
-  }
-  schreib(SPEICHER.webhook, w);
-  $('webhookStatus').textContent = w ? '✓ Gespeichert. Favoriten und „Ans Auto senden" gehen jetzt über MacroDroid.' : 'Entfernt – wieder kopieren und öffnen.';
-  zeigeSendeart(); zeigeFavoriten();
+  if (!WEBHOOK_MUSTER.test(w)) { zeigeWebhookStatus('✕ Sieht nicht aus wie https://trigger.macrodroid.com/<Geräte-ID>/cupra'); return; }
+  if (!schluessel()) { zeigeWebhookStatus('✕ Erst oben den Schlüssel eintragen.'); return; }
+  zeigeWebhookStatus('Speichere …');
+  try {
+    await favAnfrage({ aktion: 'webhookSetzen', webhook: w });
+    $('webhook').value = '';
+    zeigeWebhookStatus('✓ Im Apps Script gespeichert. „Ans Auto senden" geht jetzt darüber.');
+  } catch (fehler) { zeigeWebhookStatus('✕ ' + fehler.message); }
+}
+
+async function entferneWebhook() {
+  schreib(SPEICHER.webhook, '');
+  try { if (schluessel()) await favAnfrage({ aktion: 'webhookSetzen', webhook: '' }); } catch (fehler) { zeigeWebhookStatus('✕ ' + fehler.message); return; }
+  setzeWebhookFlag(false);
+  zeigeWebhookStatus('Entfernt – wieder kopieren und öffnen.');
+}
+
+/** Alter lokaler Webhook (z. B. von der Ladeplanung) → ins Script übernehmen, wenn dort noch keiner liegt. */
+async function uebernehmeLokalenWebhook() {
+  const w = webhook();
+  if (!w || webhookImScript() || !schluessel()) return;
+  try { await favAnfrage({ aktion: 'webhookSetzen', webhook: w }); } catch (fehler) { /* bleibt lokal als Rückfall */ }
 }
 
 // ---------- Methoden ----------
@@ -563,17 +602,19 @@ $('favBearbeiten').onclick = () => { bearbeiten = !bearbeiten; zeigeFavoriten();
 $('verlaufLeeren').onclick = () => { schreib(SPEICHER.verlauf, '[]'); zeigeVerlauf(); };
 $('schluesselSpeichern').onclick = speichereSchluessel;
 $('webhookSpeichern').onclick = speichereWebhook;
+$('webhookEntfernen').onclick = entferneWebhook;
 $('mitName').onchange = e => { schreib(SPEICHER.mitName, e.target.checked ? '1' : '0'); if (letztesErgebnis) zeigeErgebnis(letztesErgebnis.j, letztesErgebnis.geteilteZeilen); };
 
 // ---------- Start ----------
 $('kopfVersion').textContent = 'v' + APP_VERSION;
 $('versionen').textContent = 'App v' + APP_VERSION;
 $('schluessel').value = schluessel();
-$('webhook').value = lies(SPEICHER.webhook) || '';
 zeigeSendeart();
+zeigeWebhookStatus();
 baueMethoden();
 zeigeFavoriten();
 zeigeVerlauf();
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* egal */ }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=1.1.0').catch(() => {});
 
 (function start() {

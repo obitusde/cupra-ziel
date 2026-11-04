@@ -1,6 +1,6 @@
 /**
  * Cupra-Ziel — Apps Script (Web-Dienst)
- * Version 0.3.0 (19.10.2026)
+ * Version 0.4.0 (4.11.2026)
  *
  * Nimmt einen geteilten Google-Maps-Link (oder Text mit Link) entgegen, löst ihn auf
  * und liefert Name, Koordinaten und eine Adresse, die in die Suche der myCupra-App passt.
@@ -11,11 +11,15 @@
  *   ?version=1                              → { ok, version }
  * doPost (Text-Körper mit JSON, braucht den Schlüssel aus einrichten()):
  *   { aktion: 'pruefen' | 'liste' | 'speichern' | 'loeschen', schluessel, fav?, id? }
+ *   { aktion: 'webhookSetzen', schluessel, webhook }   (leer = entfernen)
+ *   { aktion: 'senden', schluessel, ziel }             (ruft den MacroDroid-Webhook auf)
  *
  * Link auflösen braucht keinen Schlüssel (nur öffentliche Kartendaten). Favoriten (Adressen, z. B.
  * Familie) liegen im Google Sheet „Cupra-Ziel Favoriten" und gehen nur mit dem Schlüssel – das Repo
  * und damit die Web-App-Adresse sind öffentlich. Schlüssel und Sheet-ID stehen in den Script
  * Properties (SCHLUESSEL, FAVORITEN_SHEET_ID), angelegt von einrichten() im Editor.
+ * Die MacroDroid-Webhook-Adresse (mit Geräte-ID) liegt ebenfalls nur in den Script Properties (WEBHOOK),
+ * nicht auf dem Handy und nie im Repo.
  *
  * Versionen:
  *   0.1.0  erste Fassung: Link auflösen (aus ladeplanung übernommen), Rückwärts-Geokodierung,
@@ -25,8 +29,12 @@
  *          Plus Codes); Fehler enthalten die aufgelöste URL (Testlink 3 vom 19.10.2026)
  *   0.3.0  Favoriten im Google Sheet: einrichten() legt Sheet + Schlüssel an, doPost mit
  *          pruefen/liste/speichern/loeschen (Christof 19.10.2026: „b in google sheets")
+ *   0.4.0  MacroDroid-Webhook in den Script Properties (Christof 4.11.2026: auf dem Handy ging die Adresse
+ *          verloren): Aktionen webhookSetzen und senden; pruefen/liste melden, ob ein Webhook hinterlegt ist
  */
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
+const WEBHOOK_MUSTER = /^https:\/\/trigger\.macrodroid\.com\/[A-Za-z0-9-]+\/[A-Za-z0-9_-]+$/;
+const ZIEL_MAX = 300;
 const FAV_SPALTEN = ['id', 'Name', 'Adresse', 'Lat', 'Lon', 'Reihenfolge', 'Angelegt'];
 
 /** Christofs Beispiel-Links vom 18.10.2026 (Hemer u. a.) für die Diagnose. */
@@ -350,13 +358,16 @@ function favoritenAktion_(anfrage) {
   if (String(anfrage.schluessel || '') !== soll) return { ok: false, version: VERSION, fehler: 'Schlüssel falsch' };
 
   const aktion = anfrage.aktion;
-  if (aktion === 'pruefen') return { ok: true, version: VERSION };
+  const webhook = eig.getProperty('WEBHOOK') || '';
+  if (aktion === 'pruefen') return { ok: true, version: VERSION, webhook: !!webhook };
+  if (aktion === 'webhookSetzen') return webhookSetzen_(eig, anfrage.webhook);
+  if (aktion === 'senden') return senden_(webhook, anfrage.ziel);
 
   const sperre = LockService.getScriptLock();
   sperre.waitLock(10000);
   try {
     const blatt = favBlatt_(SpreadsheetApp.openById(eig.getProperty('FAVORITEN_SHEET_ID')));
-    if (aktion === 'liste') return { ok: true, version: VERSION, favoriten: favoritenLesen_(blatt) };
+    if (aktion === 'liste') return { ok: true, version: VERSION, webhook: !!webhook, favoriten: favoritenLesen_(blatt) };
     if (aktion === 'speichern') {
       const fav = favSpeichern_(blatt, anfrage.fav || {});
       return { ok: true, version: VERSION, fav: fav, favoriten: favoritenLesen_(blatt) };
@@ -369,6 +380,27 @@ function favoritenAktion_(anfrage) {
   } finally {
     sperre.releaseLock();
   }
+}
+
+/** Webhook-Adresse speichern (leer = entfernen). Nur das erwartete MacroDroid-Format. */
+function webhookSetzen_(eig, adresse) {
+  const w = String(adresse || '').trim().replace(/\?.*$/, '').replace(/\/+$/, '');
+  if (!w) { eig.deleteProperty('WEBHOOK'); return { ok: true, version: VERSION, webhook: false }; }
+  if (!WEBHOOK_MUSTER.test(w)) return { ok: false, version: VERSION, fehler: 'Sieht nicht aus wie https://trigger.macrodroid.com/<Geräte-ID>/cupra' };
+  eig.setProperty('WEBHOOK', w);
+  return { ok: true, version: VERSION, webhook: true };
+}
+
+/** Ziel an MacroDroid schicken: GET <Webhook>?ziel=<Text>, wie vorher die App im Browser. */
+function senden_(webhook, ziel) {
+  if (!webhook) return { ok: false, version: VERSION, fehler: 'Kein Webhook hinterlegt', webhook: false };
+  const text = String(ziel || '').replace(/\s+/g, ' ').trim();
+  if (!text) return { ok: false, version: VERSION, fehler: 'Ziel fehlt' };
+  if (text.length > ZIEL_MAX) return { ok: false, version: VERSION, fehler: 'Ziel zu lang' };
+  const antwort = UrlFetchApp.fetch(webhook + '?ziel=' + encodeURIComponent(text), { muteHttpExceptions: true, followRedirects: false });
+  const status = antwort.getResponseCode();
+  if (status >= 400) return { ok: false, version: VERSION, fehler: 'MacroDroid antwortet mit Status ' + status, status: status };
+  return { ok: true, version: VERSION, gesendet: true, status: status };
 }
 
 /** Blatt „Favoriten" mit Kopfzeile (legt es bei Bedarf an). */

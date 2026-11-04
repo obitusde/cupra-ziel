@@ -1,6 +1,6 @@
-// Tests für die Favoriten in apps-script/Code.js (v0.3.0) mit nachgebautem Sheet.
+// Tests für die Favoriten und den Webhook in apps-script/Code.js (v0.4.0) mit nachgebautem Sheet.
 // Aufruf: node tests/test-favoriten.js
-// Version 0.1.0 (19.10.2026)
+// Version 0.2.0 (4.11.2026): Webhook im Script (webhookSetzen, senden)
 const fs = require('fs');
 const path = require('path');
 
@@ -45,16 +45,19 @@ const eigenschaften = {};
 const PropertiesService = { getScriptProperties: () => ({
   getProperty: k => (k in eigenschaften ? eigenschaften[k] : null),
   setProperty: (k, v) => { eigenschaften[k] = v; },
+  deleteProperty: k => { delete eigenschaften[k]; },
 }) };
 const LockService = { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) };
 let uuid = 0;
 const Utilities = { getUuid: () => 'abcd1234-ef56-7890-abcd-' + String(++uuid).padStart(12, '0') };
 const ContentService = { createTextOutput: t => ({ text: t, setMimeType() { return this; } }), MimeType: { JSON: 'json' } };
 const Logger = { log() {} };
+const abrufe = []; let abrufStatus = 200;
+const UrlFetchApp = { fetch: (url, opt) => { abrufe.push({ url, opt }); return { getResponseCode: () => abrufStatus }; } };
 
 const gs = new Function('SpreadsheetApp', 'PropertiesService', 'LockService', 'Utilities', 'ContentService', 'Logger', 'UrlFetchApp', 'Maps',
   quelle + '; return { einrichten, doPost, favoritenAktion_, alsText_, VERSION };')(
-  SpreadsheetApp, PropertiesService, LockService, Utilities, ContentService, Logger, {}, {});
+  SpreadsheetApp, PropertiesService, LockService, Utilities, ContentService, Logger, UrlFetchApp, {});
 
 let fehler = 0;
 const pruefe = (bedingung, text) => { if (!bedingung) { fehler++; console.log('FEHLER ' + text); } else { console.log('ok    ' + text); } };
@@ -101,6 +104,27 @@ pruefe(oma && oma.lat === null && oma.id === 'z' + blatt.zeilen.length, 'Handgep
 pruefe(gs.alsText_('=HYPERLINK("x")') === "'=HYPERLINK(\"x\")", 'Formel am Anfang entschärft');
 pruefe(gs.alsText_('  a   b ') === 'a b', 'Leerzeichen bereinigt');
 pruefe(post({ aktion: 'quatsch', schluessel: S }).fehler === 'Unbekannte Aktion: quatsch', 'Unbekannte Aktion');
+
+// --- 7. Webhook im Script -------------------------------------------------------------
+pruefe(post({ aktion: 'pruefen', schluessel: S }).webhook === false, 'pruefen: noch kein Webhook');
+pruefe(post({ aktion: 'liste', schluessel: S }).webhook === false, 'liste: noch kein Webhook');
+pruefe(/Kein Webhook/.test(post({ aktion: 'senden', schluessel: S, ziel: 'Bern' }).fehler) && !abrufe.length, 'Senden ohne Webhook → Fehler, kein Abruf');
+pruefe(post({ aktion: 'webhookSetzen', schluessel: 'falsch', webhook: 'https://trigger.macrodroid.com/abc-1/cupra' }).fehler === 'Schlüssel falsch' && !eigenschaften.WEBHOOK, 'Webhook setzen ohne Schlüssel abgelehnt');
+pruefe(/Sieht nicht aus/.test(post({ aktion: 'webhookSetzen', schluessel: S, webhook: 'https://example.com/x' }).fehler) && !eigenschaften.WEBHOOK, 'Fremde Adresse abgelehnt');
+const w1 = post({ aktion: 'webhookSetzen', schluessel: S, webhook: ' https://trigger.macrodroid.com/abc-123/cupra?ziel=alt/ ' });
+pruefe(w1.ok && w1.webhook === true && eigenschaften.WEBHOOK === 'https://trigger.macrodroid.com/abc-123/cupra', 'Webhook gespeichert, Abfrage entfernt');
+pruefe(post({ aktion: 'pruefen', schluessel: S }).webhook === true && post({ aktion: 'liste', schluessel: S }).webhook === true, 'pruefen/liste melden Webhook');
+pruefe(JSON.stringify(post({ aktion: 'liste', schluessel: S })).indexOf('abc-123') < 0, 'Antworten enthalten die Adresse nie');
+const s1 = post({ aktion: 'senden', schluessel: S, ziel: ' Rue du Lac 1,\n 1110 Morges ' });
+pruefe(s1.ok && s1.gesendet && abrufe.length === 1 && abrufe[0].url === 'https://trigger.macrodroid.com/abc-123/cupra?ziel=' + encodeURIComponent('Rue du Lac 1, 1110 Morges'), 'Senden ruft Webhook mit ?ziel= auf');
+pruefe(post({ aktion: 'senden', schluessel: 'falsch', ziel: 'x' }).fehler === 'Schlüssel falsch' && abrufe.length === 1, 'Senden ohne Schlüssel abgelehnt');
+pruefe(post({ aktion: 'senden', schluessel: S, ziel: '  ' }).fehler === 'Ziel fehlt', 'Leeres Ziel abgelehnt');
+pruefe(post({ aktion: 'senden', schluessel: S, ziel: 'x'.repeat(301) }).fehler === 'Ziel zu lang', 'Zu langes Ziel abgelehnt');
+abrufStatus = 500;
+pruefe(/Status 500/.test(post({ aktion: 'senden', schluessel: S, ziel: 'Bern' }).fehler), 'MacroDroid-Fehlerstatus wird gemeldet');
+abrufStatus = 200;
+const w2 = post({ aktion: 'webhookSetzen', schluessel: S, webhook: '' });
+pruefe(w2.ok && w2.webhook === false && !eigenschaften.WEBHOOK, 'Leer = Webhook entfernt');
 
 console.log(fehler ? '\n' + fehler + ' Fehler' : '\nAlle Tests bestanden');
 process.exit(fehler ? 1 : 0);
