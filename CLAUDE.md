@@ -1,6 +1,6 @@
 # Cupra-Ziel — Projektstand für Claude
 
-**Stand 4.11.2026** · App (`index.html`) v0.4.0 · MacroDroid-Makro (`macrodroid/Cupra-v7.macro`) v7 · Apps Script (`apps-script/Code.js`) v0.4.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.1.0
+**Stand 4.11.2026** · App (`index.html`) v0.4.0 · MacroDroid-Makro (`macrodroid/Cupra-v8.macro`) v8 · Apps Script (`apps-script/Code.js`) v0.4.0 · Action (`.github/workflows/apps-script.yml`) v1.0.1 · Service Worker (`sw.js`) v1.1.0
 
 ## 1. Nutzer und Arbeitsweise (unbedingt beachten)
 
@@ -79,6 +79,7 @@ Veröffentlichen = committen und auf `main` pushen. Die Action läuft bei Änder
 5. ✅ 19.10.2026: Favoriten (Schlüssel, Sheet) klappen; `/map/evroute`, `/destsync`, `/tourimport`, `/home` → nur Startseite (entfernt in v0.3.0).
 6. ✅ 19.10.2026: MacroDroid-Makro v4/v5 sendet ans Auto (Webhook im Browser aufgerufen). v5: Treffer-Klick 650 → 470 (traf bei „Beulerweg 35, Neuenrade" die 2. Zeile).
 8. v6 (26.10.2026, Zündung an): Import ok, kam bis zum Detailblatt; Senden-Klick 2296 lag am unteren Knopfrand → v7: 2260. ✅ 26.10.2026: v7 sendet ans Auto. Offen: geht „PARKPOSITION NICHT VERFÜGBAR" per Text-Klick „OK" weg? (Hinweis kam beim Test nicht)
+9. 4.11.2026: v7 tippte einmal neben den Senden-Knopf (danach ok, Screenshot: Knopf y 2172–2296) → **v8** (umgesetzt, ungetestet): wartet bis „Fahrzeug senden" sichtbar, a) Text-Klick per Regex ohne Groß/klein, b) Bildschirminhalt lesen + Shizuku-`input tap` auf die Knopfmitte, Erfolg = Knopf weg; nie erkannt → wie v7 540,2260. Braucht Shizuku.
 7. v0.3.0/v0.4.0 (4.11.2026: Webhook war weg → v0.4.0 legt ihn ins Script): Schlüssel (Script-Eigenschaft `SCHLUESSEL`) und Webhook in den Einstellungen eintragen, „Ans Auto senden" aus der App, Favorit antippen; Ladeplanung v0.33.0 „Ans Auto senden".
 
 ## 7. MacroDroid (seit 19.10.2026)

@@ -1,6 +1,6 @@
 # MacroDroid-Makro „Cupra" – Ziel automatisch ans Auto senden
 
-Stand 26.10.2026 · Makro **v7** (`Cupra-v7.macro`) · für **Pixel 8** (1080 × 2400), myCupra 2.15, Anzeige- und Schriftgröße Standard
+Stand 4.11.2026 · Makro **v8** (`Cupra-v8.macro`, braucht **Shizuku** wie die Stempel-Makros) · für **Pixel 8** (1080 × 2400), myCupra 2.15, Anzeige- und Schriftgröße Standard
 
 Cupra-Ziel (und die Ladeplanung) rufen den Webhook `https://trigger.macrodroid.com/<Geräte-ID>/cupra?ziel=<Text>` auf.
 Das Makro macht dann das, was man sonst von Hand tut:
@@ -22,12 +22,12 @@ Das Makro macht dann das, was man sonst von Hand tut:
 | 13 | Warten | 2 s |
 | 14 | UI-Interaktion Klick (x,y) | **540, 470** = Mitte der ersten Trefferzeile |
 | 15 | Warten | 2 s |
-| 16 | UI-Interaktion Klick (x,y) | **540, 2260** = „AN DAS FAHRZEUG SENDEN" |
-| 17 | Warten | 3 s (Bestätigung in der App) |
-| 18 | Startbildschirm | |
-| 19 | Warten | 1 s |
-| 20 | Hintergrundprozess beenden | My CUPRA |
-| 21 | Popup-Meldung | „Ziel gesendet: {v=ziel}" |
+| 16 | Bildschirm prüfen (`CheckTextOnScreenAction`) | „Fahrzeug senden" sichtbar? → `cupra_knopf`; sonst bis 7× 1 s warten und erneut prüfen |
+| 17 | Wenn nie gesehen | wie v7: Klick **540, 2260**, Startbildschirm, myCupra beenden, „Ziel gesendet? Knopf nicht erkannt …" |
+| 18 | Wenn gesehen: a) Text-Klick | Regex `(?i).*fahrzeug senden.*` (Groß-/Kleinschreibung egal), 2 s, erneut prüfen |
+| 19 | b) noch da | **Bildschirminhalt lesen** → `cupra_seite`, Shell (Shizuku) sucht „fahrzeug senden" und tippt `input tap` auf `centerX/centerY` (nicht gefunden → 540, 2260), 2 s, erneut prüfen |
+| 20 | Knopf weg | 2 s, Startbildschirm, myCupra beenden, „Ziel gesendet: {v=ziel}" |
+| 21 | Knopf immer noch da | myCupra bleibt offen, Meldung „Nicht gesendet – bitte selbst AN DAS FAHRZEUG SENDEN tippen" |
 
 ## Einrichten (neues Handy)
 
@@ -36,7 +36,7 @@ Das Makro macht dann das, was man sonst von Hand tut:
    ```
    adb shell pm grant com.arlosoft.macrodroid android.permission.WRITE_SECURE_SETTINGS
    ```
-3. `Cupra-v7.macro` aufs Handy laden → MacroDroid → ⋮ → **Import**. Ältere Fassungen ausschalten (alle hören auf `cupra`).
+3. `Cupra-v8.macro` aufs Handy laden → MacroDroid → ⋮ → **Import**. Ältere Fassungen ausschalten (alle hören auf `cupra`).
 4. Im Makro beim Auslöser „Webhook (URL)" die Adresse kopieren und in **Cupra-Ziel → Einstellungen → MacroDroid-Webhook** eintragen.
    Die Adresse enthält die Geräte-ID → **nie ins Repo, nicht teilen.**
 5. Test: Cupra-Ziel → Favorit antippen. Handy muss entsperrt sein, Bildschirm an, hochkant.
@@ -66,3 +66,14 @@ Das Makro macht dann das, was man sonst von Hand tut:
 - Bei Zündung an (Detailblatt mit „0 min (0.0 km)", darunter weitere Knöpfe) reicht der Knopf von y ≈ 2172 bis 2296.
   v6 tippte mit 2296 genau auf den unteren Rand → nichts passierte. v7: **2260**, liegt auch noch im Bereich der
   ursprünglichen Einmessung (v3, Knopf um 2296), falls das Blatt ohne Zündung tiefer sitzt.
+
+## Senden-Knopf dort tippen, wo er ist (4.11.2026, v8)
+
+- 4.11.: Einmal tippte v7 daneben, kurz danach klappte es (Screenshot 19:53: Knopf y ≈ 2172–2296, also genau wo v7 tippt).
+  Vermutung: Detailblatt noch nicht oben (Strecke wird berechnet) oder anders hoch → feste Stelle unzuverlässig.
+- v8 wartet, bis „Fahrzeug senden" zu sehen ist (bis ca. 10 s), versucht a) Text-Klick ohne Groß-/Kleinschreibung
+  (Verdacht: am 19.10. scheiterte der Text-Klick an „AN DAS FAHRZEUG SENDEN", weil der Knopf intern anders geschrieben ist),
+  dann b) Position aus „Bildschirminhalt lesen" + Shizuku-`input tap` (gleicher Parser wie `stempeln/skripte/kopf.sh`).
+  Ob gesendet wurde, zeigt die erneute Prüfung: Knopf weg = gesendet.
+- **Ungetestet:** ob MacroDroid den Knopftext in myCupra sieht (`Suche`/`OK` sieht es). Wenn nicht → v8 tippt wie v7 auf
+  die feste Stelle und meldet „Knopf nicht erkannt". Neue globale Variablen: `cupra_knopf` (Ja/Nein), `cupra_seite` (Wörterbuch).
