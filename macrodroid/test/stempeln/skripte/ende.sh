@@ -5,8 +5,20 @@ cp $B/seite-roh.txt "$D/seite-nach.txt" 2>/dev/null
 elemente "$D/seite-nach.txt" > "$D/elemente-nach.txt"
 stand "$D/elemente-nach.txt"
 t "Seite nachher: Status=$STATUS Praesenz=$PRES Letzte=$LETZTE Buchungen=$BUCH Pause=$PAUSE Agenda=$AGENDA"
-A_AKTION=keine; A_STATUS="?"; A_TYP=""; A_NAME=""; A_TEXT=""; A_KORR=""
+A_AKTION=keine; A_STATUS="?"; A_TYP=""; A_NAME=""; A_TEXT=""; A_KORR=""; A_PRES=""; A_LETZTE=""; A_BUCH=0; A_PAUSE=0
 [ -f "$D/aktion.txt" ] && . "$D/aktion.txt"
+# Nach einem Tipp nicht nachlesbar (z. B. Handy gesperrt): Stand annehmen, damit der Waechter nicht falsch erinnert
+VERM=""
+if { [ -z "$PRES" ] || [ "$STATUS" = "?" ]; } && [ "$A_AKTION" = tipp ] && [ -n "$A_PRES" ]; then
+  if grep -qE 'systemui:id/(keyguard|device_entry)' "$D/seite-nach.txt" 2>/dev/null || [ "$(gesperrt)" != 0 ]; then VERM="Handy war gesperrt"
+  elif [ "$HALB" = 1 ]; then VERM="Seite nicht fertig geladen"
+  else VERM="Seite nicht gelesen"; fi
+  PRES=$A_PRES; LETZTE=$(hm $NOW); BUCH=$(( A_BUCH + 1 )); PAUSE=$A_PAUSE
+  if [ "$A_STATUS" = IN ]; then STATUS=OUT
+  else STATUS=IN; la=$(minuten "${A_LETZTE:-0:00}")
+    [ $la -ge 660 ] && [ $la -le 870 ] && [ $NOW -gt $la ] && PAUSE=$(( PAUSE + NOW - la )); fi
+  t "angenommen ($VERM): Status=$STATUS Praesenz=$PRES Letzte=$LETZTE"
+fi
 Z_DATUM=""; Z_ORT=""; Z_NAME=""; [ -f $B/zustand.txt ] && . $B/zustand.txt
 [ "$Z_DATUM" = "$HEUTE" ] || { Z_ORT=""; Z_NAME=""; }
 ort "$LAT" "$LON"
@@ -36,7 +48,10 @@ Pause 30 min bis $(hm $(( L2 + 30 ))), 45 min bis $(hm $(( L2 + 45 )))"
     KOPF="Ausgestempelt${LETZTE:+ $LETZTE}"
     [ "$A_AKTION" = tipp ] && KOPF="$KOPF - $(label "$A_TYP")"
   fi
-  if [ "$A_AKTION" = tipp ] && [ "$STATUS" = "$A_STATUS" ]; then
+  if [ -n "$VERM" ]; then MELD="$A_TEXT getippt - $VERM, Buchung nicht nachgeprueft. Gemerkt:
+$KOPF
+$INFO"
+  elif [ "$A_AKTION" = tipp ] && [ "$STATUS" = "$A_STATUS" ]; then
     MELD="ACHTUNG: $A_TEXT getippt, aber der Stand hat sich nicht geaendert ($KOPF). Bitte pruefen!"
   elif [ "$A_AKTION" = manuell ] && [ "$STATUS" != "$A_STATUS" ]; then MELD="$KOPF (von Hand)
 $INFO"

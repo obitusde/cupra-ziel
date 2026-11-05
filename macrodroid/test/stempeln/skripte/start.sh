@@ -4,7 +4,6 @@ echo $EPOCH > $B/lock.txt
 D=$B/lauf; rm -rf "$D"; mkdir -p "$D"; echo "$D" > $B/aktuell.txt
 L=$D/log.txt; exec 2>>"$L"
 t "$TEXT (Skripte v$SKV) - Start"
-gesperrt() { dumpsys window </dev/null 2>&1 | grep -cE 'isKeyguardShowing=true|mShowingLockscreen=true|mDreamingLockscreen=true'; }
 n=0
 while [ "$(gesperrt)" != 0 ] && [ $n -lt 60 ]; do
   [ $n = 0 ] && note "Bitte entsperren - dann geht es weiter" "Stempeln" stempeln

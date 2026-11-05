@@ -1,6 +1,6 @@
 # Stempel-Skripte - gemeinsamer Kopf (Version siehe SKV)
 # Wird von den Makro-Huellen geladen: vorher gesetzt LAT LON FREI TEXT (Magic Text aus MacroDroid)
-SKV=4.1
+SKV=4.2
 B=/sdcard/Download/stempeln
 mkdir -p $B
 DEBUG=0
@@ -9,6 +9,8 @@ SOLL=505
 START=435
 # Orte: eigene Datei auf dem Handy (schreibt das private Makro "Stempeln Update"), nie im Repo
 ORTE=$(cat $B/orte.txt 2>/dev/null)
+# Sperrbildschirm sichtbar? (0 = nein)
+gesperrt() { dumpsys window </dev/null 2>&1 | grep -cE 'isKeyguardShowing=true|mShowingLockscreen=true|mDreamingLockscreen=true'; }
 # Meldung mit Uhrzeit vorne: note TEXT TITEL TAG
 note() { cmd notification post -S bigtext -t "$2" "$3" "$(date +%H:%M) · $1" </dev/null >/dev/null 2>&1; }
 # Vorschlag an den Waechter: Text steht im Titel (MacroDroid zeigt not_title), Kennung im Text:

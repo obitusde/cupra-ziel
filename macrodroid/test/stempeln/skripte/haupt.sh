@@ -43,5 +43,6 @@ else
   t "Tipp $LABEL bei $X,$Y rc=$?"
   AKTION=tipp; ERGT=$LABEL
 fi
-{ echo "A_AKTION=$AKTION"; echo "A_STATUS=$STATUS"; echo "A_TYP=$KTYP"; echo "A_NAME='$KNAME'"; echo "A_TEXT='$ERGT'"; echo "A_KORR=$KORR"; } > "$D/aktion.txt"
+{ echo "A_AKTION=$AKTION"; echo "A_STATUS=$STATUS"; echo "A_TYP=$KTYP"; echo "A_NAME='$KNAME'"; echo "A_TEXT='$ERGT'"; echo "A_KORR=$KORR"
+  echo "A_PRES=$PRES"; echo "A_LETZTE=$LETZTE"; echo "A_BUCH=$BUCH"; echo "A_PAUSE=$PAUSE"; } > "$D/aktion.txt"
 t "Aktion: $AKTION - $ERGT"

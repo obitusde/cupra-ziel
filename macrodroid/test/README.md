@@ -429,3 +429,17 @@ nichts, stellte aber die falsche Gegenfrage „einstempeln?“. (3) Das Importie
 - Skripte v4.1 brauchen Wächter v4.1 (sonst keine Zuhause-Erinnerung, der alte Wächter kennt „Stempel-Heimfrage“ nicht).
 - Lokal getestet: 07:10 nichts, 07:15 Heimfrage, Heute nicht → nichts mehr zu Hause, 08:10 im Büro Ankunft; Mo 08:15
   Heimfrage; Wochenende-Ruhe um 07:00.
+
+### Skripte v4.2 (5.11.2026) – Handy nach dem Tipp gesperrt
+
+- Anlass 5.11. 17:06: Ausstempeln HUB per Knopf hat gebucht, aber beim Nachlesen war der Sperrbildschirm zu sehen
+  (`seite-nach` = Sperrbildschirm) → „HUB getippt, aber danach: Stempelseite nicht gelesen“, Stand nicht gemerkt →
+  Wächter 17:20 „8 h 25 voll – ausstempeln?“.
+- `neu.sh` weckt den Bildschirm (`input keyevent KEYCODE_WAKEUP`), wartet bis 8 s aufs Entsperren („Bitte entsperren –
+  ich pruefe noch die Stempelseite“), öffnet dann die Seite neu (Hülle: 20 s Zeitlimit, danach noch bis 24 s Ladeprüfung).
+  `gesperrt()` jetzt in `kopf.sh`.
+- `ende.sh`: nach einem Tipp nicht nachlesbar (gesperrt / halb geladen / nicht gelesen) → Stand wird angenommen
+  (Gegenteil von vorher, Präsenz von vorher, letzte Buchung = jetzt, Pause nach Mittag), Meldung
+  „HUB getippt – Handy war gesperrt, Buchung nicht nachgeprueft. Gemerkt: …“ → Wächter erinnert nicht falsch.
+  `haupt.sh` schreibt dafür `A_PRES A_LETZTE A_BUCH A_PAUSE` in `aktion.txt`.
+- Nur Skripte → „Stempeln Update“, kein Import. Lokal getestet mit dem echten Sperrbildschirm-Dump (Aus- und Einstempeln).
