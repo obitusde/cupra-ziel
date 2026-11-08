@@ -443,3 +443,19 @@ nichts, stellte aber die falsche Gegenfrage „einstempeln?“. (3) Das Importie
   „HUB getippt – Handy war gesperrt, Buchung nicht nachgeprueft. Gemerkt: …“ → Wächter erinnert nicht falsch.
   `haupt.sh` schreibt dafür `A_PRES A_LETZTE A_BUCH A_PAUSE` in `aktion.txt`.
 - Nur Skripte → „Stempeln Update“, kein Import. Lokal getestet mit dem echten Sperrbildschirm-Dump (Aus- und Einstempeln).
+
+### Wächter v4.2 + Skripte v4.3 (7.11.2026) – Standort nur morgens, Wochenende ganz still
+
+- Anlass: Samstagabend griff MacroDroid ständig auf den Standort zu (Wächter holte 07:00–19:30 alle 5 min den Ort, jeden
+  Tag; das Ruhe-Signal kam nur einmal pro Tag).
+- **Wächter v4.2:** 07:00- und 19:30-Auslöser nur **Mo–Fr** (`m_daysOfWeek` Mo…So). Der 5-min-Lauf holt **keinen**
+  Standort mehr; braucht das Skript ihn, schickt es das Signal **„Stempel-Ort“** → neuer Zweig: Standort holen, 8 s,
+  Skript mit `ORTLAUF=1`.
+- **Skripte v4.3** (Christof 7.11.):
+  - Standort nur bis zum ersten Einstempeln: Di/Fr ab 07:15 (`START`), Mo/Mi/Do ab 07:45 (`START2`), alle 15 min
+    (`ort-zeit.txt`), bis 11:00 (`ORTBIS`). Zu Hause → Heimfrage, Büro → „Angekommen“, unterwegs → nichts.
+  - Danach kein Standort mehr: es gilt der Ort vom Einstempeln (`wahl` nimmt `Z_ORT` für beide Richtungen, auch im
+    Stempeln-Makro). „Büro verlassen“ entfällt.
+  - Pause vorbei nach 30 min (HOME OFFICE, HUB) bzw. 45 min (SUR SITE, `PAUSE_SS`/`PAUSE_KURZ`); Nachfrage nach 60 min ohne Ort.
+  - Ruhe-Signal bei jedem Lauf (verlorenes Signal wird nachgeholt). Alte Hülle v4.1 (immer mit Standort) läuft weiter.
+- Unsicher: Reihenfolge von `m_daysOfWeek` (Mo = erster Eintrag, laut ruby-macrodroid).

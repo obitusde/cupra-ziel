@@ -1,12 +1,18 @@
 # Stempel-Skripte - gemeinsamer Kopf (Version siehe SKV)
 # Wird von den Makro-Huellen geladen: vorher gesetzt LAT LON FREI TEXT (Magic Text aus MacroDroid)
-SKV=4.2
+SKV=4.3
 B=/sdcard/Download/stempeln
 mkdir -p $B
 DEBUG=0
 SOLL=505
-# Erinnerungen erst ab START (Minuten; 435 = 07:15) - der Waechter wacht schon um 07:00 auf
+# Einstempel-Erinnerung ab START (Di/Fr, 435 = 07:15) bzw. START2 (Mo/Mi/Do, 465 = 07:45), Standort nur bis ORTBIS (660 = 11:00)
+# Der Waechter wacht Mo-Fr um 07:00 auf (Shizuku-Pruefung) und holt den Standort nur morgens bis zum Einstempeln, alle 15 min
 START=435
+START2=465
+ORTBIS=660
+# Pause vorbei nach PAUSE_SS min (SUR SITE), sonst PAUSE_KURZ min (HOME OFFICE, HUB)
+PAUSE_SS=45
+PAUSE_KURZ=30
 # Orte: eigene Datei auf dem Handy (schreibt das private Makro "Stempeln Update"), nie im Repo
 ORTE=$(cat $B/orte.txt 2>/dev/null)
 # Sperrbildschirm sichtbar? (0 = nein)
@@ -39,9 +45,9 @@ ort() { TYP=""; DIST=""; RAD=""; NAME=""
   IFS=$alt; set +f; }
 # Knopf-Text fuer Typ $1 (nur der Knopf, ohne Ortsname)
 label() { case "$1" in HO) echo "HOME OFFICE" ;; HUB) echo "HUB" ;; SS) echo "SUR SITE" ;; *) echo "unbekannter Ort, du tippst selbst" ;; esac; }
-# Welcher Knopf fuer Richtung $1 (EIN/AUS)? AUS = Knopf vom Einstempeln (Z_ORT), sonst Standort (vorher ort aufrufen)
-# -> KTYP KNAME LABEL (KTYP leer = unbekannter Ort)
-wahl() { if [ "$1" = AUS ] && [ -n "$Z_ORT" ]; then KTYP=$Z_ORT; KNAME=$Z_NAME
+# Welcher Knopf fuer Richtung $1 (EIN/AUS)? Heute schon eingestempelt -> Knopf vom Einstempeln (Z_ORT, du bleibst dort),
+# sonst Standort (vorher ort aufrufen) -> KTYP KNAME LABEL (KTYP leer = unbekannter Ort)
+wahl() { if [ -n "$Z_ORT" ]; then KTYP=$Z_ORT; KNAME=$Z_NAME
   elif [ -n "$TYP" ] && [ "$DIST" -le "$RAD" ]; then KTYP=$TYP; KNAME=$NAME
   else KTYP=""; KNAME=""; fi
   LABEL=$(label "$KTYP"); }

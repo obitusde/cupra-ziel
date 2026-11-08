@@ -1,4 +1,6 @@
-# Waechter: alle 5 min (07:00-19:30, Erinnerungen ab START) - Arbeitstag? Stand + Standort -> Erinnerung oder nichts
+# Waechter: Mo-Fr alle 5 min (07:00-19:30) - Arbeitstag? Stand + Uhrzeit -> Erinnerung oder nichts
+# Standort nur morgens bis zum Einstempeln (ab START/START2, alle 15 min): ORTLAUF=0 -> Signal "Stempel-Ort",
+# der Waechter holt dann den Standort und startet das Skript mit ORTLAUF=1 nochmal. Nach dem Einstempeln: Ort vom Einstempeln.
 jetzt
 W=$B/waechter.log
 w() { [ $DEBUG = 1 ] && echo "$(date '+%d.%m. %H:%M') $*" >> $W; }
@@ -23,8 +25,10 @@ GRUND=""
 [ $WT -gt 5 ] && GRUND="Wochenende"
 feiertag $JJ $HN && GRUND="Feiertag"
 [ $HN -lt $FN ] && GRUND="frei bis $FREI"
-ruhe() { [ "$(cat $B/ruhe.txt 2>/dev/null)" = "$HEUTE" ] && exit 0
-  echo "$HEUTE" > $B/ruhe.txt; w "Ruhe: $1"; note "Stempel-Ruhe · $1" "Stempel-Ruhe" ruhe; exit 0; }
+# Ruhe-Signal bei jedem Lauf (schaltet den Waechter bis morgen aus; ging es verloren, kommt es beim naechsten Lauf wieder)
+ruhe() { echo "$HEUTE" > $B/ruhe.txt; w "Ruhe: $1"; note "Stempel-Ruhe · $1" "Stempel-Ruhe" ruhe; exit 0; }
+# alter Waechter (v4.1) holt den Standort immer selbst
+[ -z "$ORTLAUF" ] && { ORTLAUF=0; [ -n "$LAT" ] && ORTLAUF=1; }
 [ -n "$GRUND" ] && ruhe "$GRUND"
 # Stand vom letzten Stempeln
 Z_DATUM=""; Z_STATUS=OUT; Z_PRES=0; Z_LESE=$EPOCH; Z_LETZTE=""; Z_BUCH=0; Z_ORT=""; Z_NAME=""
@@ -32,47 +36,54 @@ Z_DATUM=""; Z_STATUS=OUT; Z_PRES=0; Z_LESE=$EPOCH; Z_LETZTE=""; Z_BUCH=0; Z_ORT=
 [ "$Z_DATUM" != "$HEUTE" ] && { Z_STATUS=OUT; Z_PRES=0; Z_LESE=$EPOCH; Z_LETZTE=""; Z_BUCH=0; Z_ORT=""; Z_NAME=""; }
 P=$Z_PRES; [ "$Z_STATUS" = IN ] && P=$(( Z_PRES + (EPOCH - Z_LESE) / 60 ))
 [ "$Z_STATUS" = OUT ] && [ $P -ge $SOLL ] && ruhe "Feierabend ($(hm $P))"
-# vor START (07:15) noch keine Erinnerungen
+# Einstempel-Erinnerung ab START (Di/Fr) bzw. START2 (Mo/Mi/Do)
+AB=$START2; { [ $WT = 2 ] || [ $WT = 5 ]; } && AB=$START
 [ $NOW -lt $START ] && exit 0
 # spaeter?
 [ -f $B/spaeter.txt ] && [ $EPOCH -lt $(cat $B/spaeter.txt) ] && { w "spaeter - nichts"; exit 0; }
-ort "$LAT" "$LON"
-DA=""; [ -n "$TYP" ] && [ "$DIST" -le "$RAD" ] && DA=$TYP
-ZIEL=""; MSG=""; GRUND=""; WDH=15
+ZIEL=""; MSG=""; GRUND=""; WDH=15; TYP=""; DIST=""
 if [ "$Z_STATUS" = IN ]; then
   if [ $P -ge $SOLL ]; then ZIEL=AUS; GRUND="8 h 25 voll"; UE=$(( P - SOLL ))
     MSG="8 h 25 voll seit $(hm $(( (NOW - UE + 1440) % 1440 )))"; [ $UE -ge 5 ] && MSG="$MSG (+$UE min)"; MSG="$MSG - ausstempeln?"
   elif [ $NOW -ge 705 ] && [ $NOW -lt 870 ] && [ $(minuten "${Z_LETZTE:-0:00}") -lt 660 ]; then
     ZIEL=AUS; GRUND="Mittagspause"; MSG="Mittagspause (heute $(hm $P)) - ausstempeln?"
-  elif [ "$Z_ORT" = SS ] || [ "$Z_ORT" = HUB ]; then
-    if [ -n "$TYP" ] && { [ "$TYP" != SS ] && [ "$TYP" != HUB ] || [ "$DIST" -gt $(( RAD + 200 )) ]; }; then
-      ZIEL=AUS; GRUND="Buero verlassen"; MSG="Buero verlassen (heute $(hm $P)) - ausstempeln?"; fi
   fi
 elif [ "$Z_BUCH" = 0 ]; then
+  # noch nicht eingestempelt: Standort noetig, nur morgens und hoechstens alle 15 min
+  [ $NOW -ge $AB ] && [ $NOW -lt $ORTBIS ] || exit 0
+  if [ $ORTLAUF = 0 ]; then
+    OZ=$(cat $B/ort-zeit.txt 2>/dev/null); [ -n "$OZ" ] && [ $(( EPOCH - OZ )) -lt 840 ] && { w "Ort erst wieder in 15 min"; exit 0; }
+    echo $EPOCH > $B/ort-zeit.txt; w "Standort anfordern"
+    note "Stempel-Ort · Standort holen" "Stempel-Ort" ort; exit 0
+  fi
+  echo $EPOCH > $B/ort-zeit.txt
+  ort "$LAT" "$LON"
+  DA=""; [ -n "$TYP" ] && [ "$DIST" -le "$RAD" ] && DA=$TYP
   # [Heute nicht] in der Zuhause-Erinnerung: heute keine Zuhause-Erinnerung mehr
   [ "$DA" = HO ] && [ "$(cat $B/heute-nicht.txt 2>/dev/null)" = "$HEUTE" ] && DA=""
   case "$DA" in
-    SS|HUB) ZIEL=EIN; GRUND="Ankunft"; MSG="Angekommen - einstempeln?"; [ $NOW -lt 480 ] && WDH=9999 ;;
-    HO) if { [ $WT = 2 ] || [ $WT = 5 ]; } && [ $NOW -ge $START ] && [ $NOW -lt 660 ]; then ZIEL=EIN; GRUND="Home Office"; MSG="Zu Hause - einstempeln?"
-        elif [ $NOW -ge 495 ] && [ $NOW -lt 660 ]; then ZIEL=EIN; GRUND="Home Office"; MSG="Noch zu Hause - heute Home Office? Einstempeln?"; fi ;;
+    SS|HUB) ZIEL=EIN; GRUND="Ankunft"; MSG="Angekommen - einstempeln?" ;;
+    HO) ZIEL=EIN; GRUND="Home Office"
+        if [ $WT = 2 ] || [ $WT = 5 ]; then MSG="Zu Hause - einstempeln?"; else MSG="Noch zu Hause - heute Home Office? Einstempeln?"; fi ;;
   esac
 else
-  LZ=$(minuten "${Z_LETZTE:-0:00}")
-  if [ $LZ -ge 660 ] && [ $LZ -le 870 ] && [ $NOW -ge $(( LZ + 35 )) ] && [ $NOW -lt $(( LZ + 60 )) ]; then
+  # nach dem Ausstempeln in der Mittagszeit: Pause vorbei (SUR SITE 45 min, sonst 30 min), nach 60 min einmal nachfragen
+  LZ=$(minuten "${Z_LETZTE:-0:00}"); PZ=$PAUSE_KURZ; [ "$Z_ORT" = SS ] && PZ=$PAUSE_SS
+  if [ $LZ -ge 660 ] && [ $LZ -le 870 ] && [ $NOW -ge $(( LZ + PZ )) ] && [ $NOW -lt $(( LZ + 60 )) ]; then
     ZIEL=EIN; GRUND="Pause vorbei"; MSG="Pause seit $(( NOW - LZ )) min (heute $(hm $P)) - wieder einstempeln?"
-  elif [ $LZ -ge 660 ] && [ $LZ -le 870 ] && [ $NOW -ge $(( LZ + 60 )) ] && [ -n "$DA" ]; then
+  elif [ $LZ -ge 660 ] && [ $LZ -le 870 ] && [ $NOW -ge $(( LZ + 60 )) ]; then
     # vielleicht am Badge eingestempelt - einmal nachfragen
     ZIEL=EIN; GRUND="Nachfrage"; WDH=9999
     MSG="Seit $Z_LETZTE ausgestempelt ($(( NOW - LZ )) min) - schon wieder eingestempelt? Sonst jetzt einstempeln?"; fi
 fi
-w "Stand=$Z_STATUS heute=$(hm $P) Ort=${TYP:-?} ${DIST:-} m da=${DA:-nein} -> ${ZIEL:-nichts}"
+w "Stand=$Z_STATUS heute=$(hm $P) Ort=${TYP:--} ${DIST:-} -> ${ZIEL:-nichts}"
 [ -z "$ZIEL" ] && exit 0
 wahl $ZIEL
 MSG="$MSG → $LABEL"
 V_ZIEL=""; V_ZEIT=0; V_DATUM=""; V_LABEL=""; V_GRUND=""
 [ -f $B/vorschlag-letzter.txt ] && . $B/vorschlag-letzter.txt
 # gleiche Frage (Richtung, Knopf und Grund) erst nach WDH Minuten wiederholen
-if [ "$V_ZIEL" = "$ZIEL" ] && [ "$V_LABEL" = "$LABEL" ] && [ "$V_GRUND" = "$GRUND" ] && [ "$V_DATUM" = "$HEUTE" ] && [ $(( (EPOCH - V_ZEIT) / 60 )) -lt $WDH ]; then exit 0; fi
+if [ "$V_ZIEL" = "$ZIEL" ] && [ "$V_LABEL" = "$LABEL" ] && [ "$V_GRUND" = "$GRUND" ] && [ "$V_DATUM" = "$HEUTE" ] && [ $(( EPOCH - V_ZEIT )) -lt $(( WDH * 60 - 120 )) ]; then exit 0; fi
 { echo "V_ZIEL=$ZIEL"; echo "V_ZEIT=$EPOCH"; echo "V_DATUM=$HEUTE"; echo "V_LABEL='$LABEL'"; echo "V_GRUND='$GRUND'"; } > $B/vorschlag-letzter.txt
 cp $B/vorschlag-letzter.txt $B/vorschlag.txt
 w "Vorschlag: $MSG"
