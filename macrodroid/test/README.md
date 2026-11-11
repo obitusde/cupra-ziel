@@ -459,3 +459,24 @@ nichts, stellte aber die falsche Gegenfrage „einstempeln?“. (3) Das Importie
   - Pause vorbei nach 30 min (HOME OFFICE, HUB) bzw. 45 min (SUR SITE, `PAUSE_SS`/`PAUSE_KURZ`); Nachfrage nach 60 min ohne Ort.
   - Ruhe-Signal bei jedem Lauf (verlorenes Signal wird nachgeholt). Alte Hülle v4.1 (immer mit Standort) läuft weiter.
 - Unsicher: Reihenfolge von `m_daysOfWeek` (Mo = erster Eintrag, laut ruby-macrodroid).
+
+### Stempeln v4.1 / Stand v4.1 / Wächter v4.3 + Skripte v4.4 (11.11.2026) – falsche Seite (`/ux/home`)
+
+- Anlass 11.11. 07:01: Chrome landete statt auf `…/ux/clock` auf der Startseite `…/ux/home` (vermutlich nach neuer
+  Anmeldung). Die Prüfung „HOME OFFICE sichtbar“ war trotzdem erfüllt (die Startseite zeigt den Text auch) → nicht neu
+  geöffnet, 30 s auf die Agenda gewartet, nichts getippt; Christof stempelte von Hand. Am 10.11. stand dort kein „HOME
+  OFFICE“ → neu geöffnet → ok. MacroDroid-Protokoll kürzt Skript-Einträge nach ~2900 Zeichen.
+- **Hüllen Stempeln v4.1 / Stand v4.1:** keine Text-Prüfung „HOME OFFICE“ mehr. Warten auf die Agenda („23:00“, 6 s + 3×4 s);
+  fehlt sie → Bildschirm lesen → **`pruef.sh`** (neu): Adresse aus der Adressleiste (`seite_art`) ≠ `ux/clock` oder
+  gesperrt → Bildschirm wecken, bis 12 s aufs Entsperren warten, Stempelseite neu öffnen; Stempelseite lädt nur langsam →
+  nichts tun; dann bis 5×5 s weiter warten. Seiteninhalt jetzt mit `sed 's/ticket=…/ticket=-/'` statt `grep -v ticket=`
+  (die Adresse bleibt lesbar, das Login-Ticket nicht).
+- **Skripte v4.4:** `haupt.sh` tippt nur auf der richtigen, fertig geladenen Seite (Adresse `ux/clock`, ohne Adresse:
+  Abschnitt „TIMBRER AVEC MOTIF“); sonst `A_AKTION=nochmal` (+ `A_WUNSCH`, `A_VLABEL`). **Zweiter Versuch** in `ende.sh`
+  auf der neu geöffneten Seite: Entscheidung + Tipp aus **`tipp.sh`** (gemeinsam mit `haupt.sh`), danach Stand angenommen
+  („Stempelseite kam erst beim zweiten Oeffnen, Buchung nicht nachgeprueft“), 3 s Pause vor dem Startbildschirm.
+  Meldungen nennen die falsche Seite („Chrome zeigte webquartz/ux/home“).
+- **Wächter v4.3** = v4.2 mit Knöpfen auf Stempeln v4.1 / Stand v4.1.
+- Lokal getestet mit der echten Stempelseite vom 11.11. und einer nachgebauten `/ux/home`: Startseite → zweiter Versuch
+  tippt; zweimal Startseite → nichts; pruef (Startseite/gesperrt → neu öffnen, ladende Stempelseite → nicht); Stand auf
+  Startseite; zweiter Versuch, schon ausgestempelt. Alte Tests unverändert (bis auf die neuen Meldungen).

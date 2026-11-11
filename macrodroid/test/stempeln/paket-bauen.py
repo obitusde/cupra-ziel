@@ -3,7 +3,7 @@
 # Nach jeder Skript-Aenderung: SKV in kopf.sh hochzaehlen, dieses Skript laufen lassen, committen, pushen.
 import os,re
 H=os.path.dirname(os.path.abspath(__file__))
-DATEIEN=['kopf.sh','start.sh','neu.sh','haupt.sh','ende.sh','waechter.sh','spaeter.sh','frei.sh','heutenicht.sh']
+DATEIEN=['kopf.sh','start.sh','neu.sh','pruef.sh','haupt.sh','tipp.sh','ende.sh','waechter.sh','spaeter.sh','frei.sh','heutenicht.sh']
 v=re.search(r'^SKV=([0-9.]+)$',open(H+'/skripte/kopf.sh').read(),re.M).group(1)
 t=['#STEMPELPAKET '+v,'# Stempel-Skripte fuer MacroDroid (Makro "Stempeln Update" packt aus). Nicht von Hand aendern.']
 for d in DATEIEN:

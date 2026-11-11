@@ -1,6 +1,6 @@
 # Stempel-Skripte - gemeinsamer Kopf (Version siehe SKV)
 # Wird von den Makro-Huellen geladen: vorher gesetzt LAT LON FREI TEXT (Magic Text aus MacroDroid)
-SKV=4.3
+SKV=4.4
 B=/sdcard/Download/stempeln
 mkdir -p $B
 DEBUG=0
@@ -15,6 +15,16 @@ PAUSE_SS=45
 PAUSE_KURZ=30
 # Orte: eigene Datei auf dem Handy (schreibt das private Makro "Stempeln Update"), nie im Repo
 ORTE=$(cat $B/orte.txt 2>/dev/null)
+# Welche Seite zeigt Chrome? $1 = Bildschirminhalt -> SEITE=clock|fremd, U=Adresse aus der Adressleiste
+# (Die Startseite .../ux/home zeigt auch "HOME OFFICE" - deshalb zaehlt die Adresse; ohne Adresse: Abschnitt "TIMBRER AVEC MOTIF")
+seite_art() { U=$(grep -o 'webquartz/ux/[a-z]*' "$1" 2>/dev/null | head -1)
+  case "$U" in
+    */clock) SEITE=clock ;;
+    "") if grep -q 'TIMBRER AVEC MOTIF' "$1" 2>/dev/null; then SEITE=clock; else SEITE=fremd; fi ;;
+    *) SEITE=fremd ;;
+  esac; }
+# Sperrbildschirm im Bildschirminhalt $1?
+sperrbild() { grep -qE 'systemui:id/(keyguard|device_entry)' "$1" 2>/dev/null; }
 # Sperrbildschirm sichtbar? (0 = nein)
 gesperrt() { dumpsys window </dev/null 2>&1 | grep -cE 'isKeyguardShowing=true|mShowingLockscreen=true|mDreamingLockscreen=true'; }
 # Meldung mit Uhrzeit vorne: note TEXT TITEL TAG
