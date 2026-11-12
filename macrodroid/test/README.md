@@ -1,3 +1,5 @@
+> **Umgezogen (12.11.2026):** Stempeln lebt jetzt in [obitusde/stempeln](https://github.com/obitusde/stempeln) (App, Makros, Skripte). Diese Seite ist nur noch Geschichte.
+
 # Test-Makros (nicht Cupra)
 
 Hier liegen Makros, die nichts mit Cupra-Ziel zu tun haben und nur zum Ausprobieren im öffentlichen Repo stehen.
